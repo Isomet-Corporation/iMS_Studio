@@ -36,3 +36,7 @@ Tools -> NuGet Package Manager -> Package Manager Console
 5. Check in reference tab that all packages have downloaded and built (no warning symbols) or redo step 4.
 
 6. Build Solution  
+
+## Troubleshooting
+
+If encountering an error in the build such as 'Your project file doesn't list 'win' as a "RuntimeIdentifier". You should add 'win' to the "RuntimeIdentifiers" property in your project file and then re-run NuGet restore.' please delete the bin/ and obj/ files and rebuild.
