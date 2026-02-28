@@ -1,0 +1,75 @@
+﻿<Application x:Class="iMS_Studio.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:iMS_Studio"
+             xmlns:v="clr-namespace:iMS_Studio.View"
+             xmlns:vc="clr-namespace:iMS_Studio.ValueConverters"
+             xmlns:vm="clr-namespace:iMS_Studio.ViewModel"
+             xmlns:xcdg="clr-namespace:Xceed.Wpf.DataGrid;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgv="clr-namespace:Xceed.Wpf.DataGrid.Views;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgm="clr-namespace:Xceed.Wpf.DataGrid.Markup;assembly=DotNetProjects.Wpf.DataGrid"
+             Startup="Application_Startup" Exit="Application_Exit">
+    <Application.Resources>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- Add Row Indices to all tables -->
+        <Style x:Key="itemIndexSelectorStyle" TargetType="{x:Type xcdg:RowSelector}">
+            <Setter Property="Content" Value="{Binding RelativeSource={RelativeSource Self}, Path=ItemIndex}" />
+        </Style>
+
+        <Style TargetType="{x:Type xcdg:DataRow}">
+            <Setter Property="xcdg:RowSelector.RowSelectorStyle" Value="{StaticResource itemIndexSelectorStyle}" />
+        </Style>
+
+        <Style TargetType="{x:Type xcdgv:TableView}">
+            <Setter Property="RowSelectorPaneWidth" Value="35" />
+        </Style>
+
+        <!-- Buttons without hover effect -->
+        <Style x:Key="ButtonWithNoHover" TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Border BorderThickness="2" BorderBrush="{TemplateBinding BorderBrush}">
+                                <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate DataType="{x:Type vm:AODeviceChooserVM}" >
+            <v:AODeviceChooserForm/>
+        </DataTemplate>
+        
+        <vc:BooleanInvertValueConverter x:Key="BooleanInvertValueConverter" />
+        <vc:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <vc:BooleanToInvisibilityConverter x:Key="BooleanToInvisibilityConverter" />
+        <vc:BooleanToStrikethroughConverter x:Key="BooleanToStrikethroughConverter" />
+        <vc:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+        <vc:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+        <vc:RadioButtonCheckedConverter x:Key="RadioButtonCheckedConverter" />
+        <vc:EnumDescriptionConverter x:Key="EnumDescriptionConverter" />
+        <vc:BoolToStringConverter x:Key="BoolToStringConverter" />
+        <vc:BoolToBrushConverter x:Key="RedGrnGradBrushConverter">
+            <vc:BoolToBrushConverter.TrueColor>
+                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                    <GradientStop Color="White" Offset="1"/>
+                    <GradientStop Color="ForestGreen" Offset="0"/>
+                </LinearGradientBrush>
+            </vc:BoolToBrushConverter.TrueColor>
+            <vc:BoolToBrushConverter.FalseColor>
+                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                    <GradientStop Color="White" Offset="0"/>
+                    <GradientStop Color="Red" Offset="1"/>
+                </LinearGradientBrush>
+            </vc:BoolToBrushConverter.FalseColor>
+        </vc:BoolToBrushConverter>
+
+    </Application.Resources>
+</Application>

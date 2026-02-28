@@ -1,0 +1,188 @@
+﻿<UserControl x:Class="iMS_Studio.View.ImageDockWindowView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:iMS_Studio.View"
+             xmlns:diag="clr-namespace:System.Diagnostics;assembly=WindowsBase"
+             xmlns:xcdg="clr-namespace:Xceed.Wpf.DataGrid;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgv="clr-namespace:Xceed.Wpf.DataGrid.Views;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgm="clr-namespace:Xceed.Wpf.DataGrid.Markup;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xctk="clr-namespace:Xceed.Wpf.Toolkit;assembly=DotNetProjects.Wpf.Extended.Toolkit"
+             xmlns:ims="clr-namespace:iMS;assembly=iMSNET"
+             mc:Ignorable="d" 
+             d:DesignHeight="300" d:DesignWidth="300">
+    <Grid x:Name="grid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.Resources>
+            <xcdg:DataGridCollectionViewSource x:Key="image_data" 
+                                  Source="{Binding Path=ImageData}" />
+
+            <DataTemplate x:Key="IndexColumn">
+                <TextBlock Text="{Binding}" Background="Silver"/>
+            </DataTemplate>
+            <DataTemplate x:Key="SyncD_celltemplate">
+                <TextBlock Text="{Binding Path=., Mode=TwoWay, StringFormat=0x{0:X4}}" HorizontalAlignment="Center"/>
+            </DataTemplate>
+            <DataTemplate x:Key="SyncD_edittemplate">
+                <xctk:IntegerUpDown Value="{xcdgm:CellEditorBinding}" ParsingNumberStyle="HexNumber" FormatString="X4"/>
+            </DataTemplate>
+            <DataTemplate x:Key="SyncA_celltemplate">
+                <TextBlock Text="{Binding Path=., Mode=TwoWay, StringFormat={}{0:f3}}" HorizontalAlignment="Center"/>
+            </DataTemplate>
+            <DataTemplate x:Key="default_celltemplate">
+                <TextBlock Text="{Binding Path=., Mode=TwoWay, StringFormat={}{0:f4}}" HorizontalAlignment="Center"/>
+            </DataTemplate>
+            <DataTemplate x:Key="default_edittemplate">
+                <TextBox Text="{xcdgm:CellEditorBinding}"
+                         IsVisibleChanged="TextBox_IsVisibleChanged" Initialized="TextBox_Initialized" KeyDown="TextBox_KeyDown"/>
+            </DataTemplate>
+
+            <Style TargetType="{x:Type xcdg:ColumnManagerCell}">
+                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="ColumnHeader_PreviewMouseButtonDown"/>
+            </Style>
+        </Grid.Resources>
+
+        <xcdg:DataGridControl x:Name="ImagePoints" ItemsSource="{Binding Source={StaticResource image_data}}"
+                              AutoCreateColumns="False" SelectionUnit="Cell" SynchronizeSelectionWithCurrent="True"
+                              PreviewKeyDown="ImagePoints_KeyDown" PreviewKeyUp="ImagePoints_KeyUp" UpdateSourceTrigger="CellContentChanged">
+            <xcdg:DataGridControl.Columns>
+                <!--<xcdg:Column FieldName="IndexValue" Title="Index" ReadOnly="True" Width="*" CellContentTemplate="{StaticResource IndexColumn}"/>-->
+                <xcdg:Column FieldName="FreqCh1" Title="Ch1 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh1" Title="Ch1 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh1" Title="Ch1 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="FreqCh2" Title="Ch2 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh2" Title="Ch2 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh2" Title="Ch2 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="FreqCh3" Title="Ch3 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh3" Title="Ch3 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh3" Title="Ch3 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="FreqCh4" Title="Ch4 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh4" Title="Ch4 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh4" Title="Ch4 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="SyncD" Title="Sync Data (Dig)" CellContentTemplate="{StaticResource SyncD_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource SyncD_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="SyncA1" Title="Sync Data (Anlg #1)" CellContentTemplate="{StaticResource SyncA_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="SyncA2" Title="Sync Data (Anlg #2)" CellContentTemplate="{StaticResource SyncA_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+            </xcdg:DataGridControl.Columns>
+
+            <xcdg:DataGridControl.CommandBindings>
+                <CommandBinding Command="{x:Static ApplicationCommands.Paste}"/>
+            </xcdg:DataGridControl.CommandBindings>
+            <xcdg:DataGridControl.ItemScrollingBehavior>Immediate</xcdg:DataGridControl.ItemScrollingBehavior>
+
+            <xcdg:DataGridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Command="{x:Static ApplicationCommands.Copy}" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\copy.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{x:Static ApplicationCommands.Paste}" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\paste.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="In_terpolate" Command="{Binding Path=InterpolateCommand}"
+                              CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}},
+                              Path=PlacementTarget.SelectedCellRanges}" >
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="_Insert Rows" Command="{Binding Path=InsertNewImageRowsCommand}"
+                              CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}},
+                              Path=PlacementTarget.SelectedCellRanges}" >
+                    </MenuItem>
+                    <MenuItem Header="_Delete Rows" Command="{Binding Path=DeleteImageRowsCommand}"
+                              CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}},
+                              Path=PlacementTarget.SelectedCellRanges}" >
+                    </MenuItem>
+                </ContextMenu>
+            </xcdg:DataGridControl.ContextMenu>
+            
+            <xcdg:DataGridControl.View>
+                <xcdgv:TableView UseDefaultHeadersFooters="False" ShowRowSelectorPane="True">
+                    <xcdgv:TableView.FixedHeaders>
+                        <DataTemplate>
+                            <xcdg:ColumnManagerRow AllowSort="False" AllowColumnReorder="False"/>
+                        </DataTemplate>
+                    </xcdgv:TableView.FixedHeaders>
+                </xcdgv:TableView>
+            </xcdg:DataGridControl.View>
+
+        </xcdg:DataGridControl>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,8,10,0">
+            <Label Content="Number of Image Points: " />
+            <xctk:IntegerUpDown x:Name="imgCount" Value="{Binding ImageSize, Mode=TwoWay}" Minimum="2" />
+            <Label Content="   Default Internal Clock Rate (kHz): " ToolTip="Image Playback rate when configured to use internal oscillator and not playing as part of a sequence" />
+            <xctk:DoubleUpDown x:Name="imgClockRate" Width="80" Value="{Binding Path=ImageClockRate, Mode=TwoWay}" 
+                               ToolTip="(min=0.016 max=10000.0)" FormatString="F3" Increment="1.0" Minimum="0.016" Maximum="10000.000"/>
+            <Label Content="   Default External Clock Divider: " ToolTip="Divide down ratio for external clock input"/>
+            <xctk:IntegerUpDown x:Name="imgExtDiv" Width="60" Value="{Binding Path=ExtClockDivide, Mode=TwoWay}" Minimum="1" Maximum="255" ToolTip="(min=1 max=255)" />
+        </StackPanel>
+    </Grid>
+</UserControl>

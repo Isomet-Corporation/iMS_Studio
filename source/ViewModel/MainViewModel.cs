@@ -1,0 +1,2085 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using iMS;
+using System.Windows.Input;
+using Grpc.Core;
+using ImsHwServer;
+using iMS_Studio.Model;
+using System.ComponentModel;
+using System.Windows;
+using System.Reflection;
+using static iMS.ImagePlayer;
+using System.Collections.ObjectModel;
+
+namespace iMS_Studio.ViewModel
+{
+    public class MainViewModel : BaseViewModel
+    {
+        private ImageProject _ImageProject;
+        private Channel _channel;
+        private ims_system thisIMS;
+        private iMS_Studio.Settings _settings;
+
+        public DockManagerViewModel DockManagerViewModel { get; private set; }
+        public MenuViewModel MenuViewModel { get; private set; }
+
+        // The Anchorable Models
+        private SignalPathModel _signalPathModel;
+        private CalibrationToneModel _calibToneModel;
+        private EnhancedToneModel _enhToneModel;
+        private SystemFuncModel _sysFuncModel;
+        private iMS.ImagePlayer.PlayConfiguration _playConfig;
+        private ToneBufferModel _toneBufferModel;
+
+        // The Anchorable View Models
+        private ImageProjectTreeViewModel ImageProjectTreeVMReference;
+        private SignalPathViewModel SignalPathVMReference;
+        private SysFuncViewModel SysFuncVMReference;
+        private CalibrationViewModel CalibrationVMReference;
+        private EnhancedToneViewModel EnhancedToneVMReference;
+        private PlayConfigurationViewModel PlayConfigurationVMReference;
+        private CompensationViewModel CompensationVMReference;
+        private HWServerConsoleViewModel HWServerConsoleVMReference;
+        private SyncDataViewModel SyncDataVMReference;
+
+        public string FileName { get; set; }
+        private bool _isDirty;
+        public bool IsDirty
+        {
+            get { return _isDirty; }
+            set {
+                _isDirty = value;
+                OnPropertyChanged("WindowName");
+            }
+        }
+
+        private string _windowName;
+        public string WindowName
+        {
+            get {
+                if (IsDirty == true)
+                    return "Isomet iMS Studio v" + Utils.GetVersion() + " [" + _windowName + "*]";
+                else
+                    return "Isomet iMS Studio v" + Utils.GetVersion() + " [" + _windowName + "]";
+            }
+            set
+            {
+                if (_windowName != value)
+                {
+                    _windowName = value;
+                    OnPropertyChanged("WindowName");
+                }
+            }
+        }
+
+        public ImageProjectTreeViewModel ProjectExplorerVM
+        {
+            get {
+                if (ImageProjectTreeVMReference == null)
+                {
+                    ImageProjectTreeVMReference = new ImageProjectTreeViewModel(MoveImageCommand, CopyImageCommand) { Title = "Project Explorer" };
+                }
+                return ImageProjectTreeVMReference;
+            }
+        }
+
+        public SignalPathViewModel SignalPathVM
+        {
+            get {
+                if (SignalPathVMReference == null)
+                {
+                    SignalPathVMReference = new SignalPathViewModel(_signalPathModel) { Title = "Signal Path" };
+                }
+                return SignalPathVMReference;
+            }
+        }
+
+        public CalibrationViewModel CalibrationVM
+        {
+            get {
+                if (CalibrationVMReference == null)
+                {
+                    CalibrationVMReference = new CalibrationViewModel(_calibToneModel) { Title = "Calibration" };
+                }
+                return CalibrationVMReference;
+            }
+        }
+
+        public EnhancedToneViewModel EnhancedToneVM
+        {
+            get
+            {
+                if (EnhancedToneVMReference == null)
+                {
+                    EnhancedToneVMReference = new EnhancedToneViewModel(_enhToneModel) { Title = "Enhanced Tone" };
+                }
+                return EnhancedToneVMReference;
+            }
+        }
+
+        public PlayConfigurationViewModel PlayConfigurationVM
+        {
+            get {
+                if (PlayConfigurationVMReference == null)
+                {
+                    PlayConfigurationVMReference = new PlayConfigurationViewModel(_playConfig) { Title = "Player Configuration" };
+                }
+                return PlayConfigurationVMReference;
+            }
+        }
+
+        public CompensationViewModel CompensationVM
+        {
+            get {
+                if (CompensationVMReference == null)
+                {
+                    CompensationVMReference = new CompensationViewModel(thisIMS, _channel) { Title = "Compensation" };
+                }
+                return CompensationVMReference;
+            }
+        }
+
+        public HWServerConsoleViewModel ConsoleVM
+        {
+            get
+            {
+                if (HWServerConsoleVMReference == null)
+                {
+                    HWServerConsoleVMReference = new HWServerConsoleViewModel() { Title = "Hardware Console" };
+                }
+                return HWServerConsoleVMReference;
+            }
+        }
+
+        public SyncDataViewModel SyncDataVM
+        {
+            get
+            {
+                if (SyncDataVMReference == null)
+                {
+                    SyncDataVMReference = new SyncDataViewModel(_signalPathModel) { Title = "Sync Data" };
+                }
+                return SyncDataVMReference;
+            }
+        }
+
+        public SysFuncViewModel SysFuncVM
+        {
+            get
+            {
+                if (SysFuncVMReference == null)
+                {
+                    SysFuncVMReference = new SysFuncViewModel(_sysFuncModel) { Title = "Clock Gen" };
+                }
+                return SysFuncVMReference;
+            }
+        }
+
+        private TimeSpan _progressPointPeriod;
+        private System.Windows.Threading.DispatcherTimer progressBarTimer;
+
+        public MainViewModel(ImageProject proj, Channel channel, ims_system ims, Settings settings)
+        {
+            Project = proj;
+            _channel = channel;
+            thisIMS = ims;
+            _settings = settings;
+
+            FileName = null;
+            IsDirty = false;
+            ImageProgress = 0;
+            ImageProgressInDeterminate = false;
+            ImageLength = 100;
+
+            var Tree = new ImageProjectTreeViewModel(MoveImageCommand, CopyImageCommand) { Title = "Project Explorer" };
+            ImageProjectTreeVMReference = Tree;
+
+            _signalPathModel = new SignalPathModel(channel, ims);
+            var SigPath = new SignalPathViewModel(_signalPathModel) { Title = "Signal Path" };
+            SignalPathVMReference = SigPath;
+            SignalPathVMReference.PropertyChanged += SignalPathViewEventHandler;
+
+            _calibToneModel = new CalibrationToneModel(channel, ims);
+            var Calib = new CalibrationViewModel(_calibToneModel) { Title = "Calibration" };
+            CalibrationVMReference = Calib;
+            CalibrationVMReference.PropertyChanged += CalibrationEventHandler;
+
+            _enhToneModel = new EnhancedToneModel(channel, ims);
+            var EnhTone = new EnhancedToneViewModel(_enhToneModel) { Title = "Enhanced Tone" };
+            EnhancedToneVMReference = EnhTone;
+
+            _sysFuncModel = new SystemFuncModel(channel, ims);
+            var SysFunc = new SysFuncViewModel(_sysFuncModel) { Title = "Clock Gen" };
+            SysFuncVMReference = SysFunc;
+//            SysFuncVMReference.PropertyChanged += SysFuncViewEventHandler;
+
+            // Crosslink Enhanced Tone and Single Tone Locked parameters
+            EnhancedToneVM.UpdateTone = LockCalibToneCommand;
+            CalibrationVM.UpdateTone = LockEnhancedToneCommand;
+            
+            _playConfig = new ImagePlayer.PlayConfiguration();
+            var PlayCfg = new PlayConfigurationViewModel(_playConfig) { Title = "Player Configuration" };
+            PlayConfigurationVMReference = PlayCfg;
+
+            var supportedResolutions = new ObservableCollection<FreqResolutionVM>();
+            supportedResolutions.Add(FreqResolutionVM.BITS16);
+            if (thisIMS != null)
+            {
+                if (thisIMS.Synth.Cap.FreqBits >= 24)
+                {
+                    supportedResolutions.Add(FreqResolutionVM.BITS24);
+                }
+                if (thisIMS.Synth.Cap.FreqBits >= 32)
+                {
+                    supportedResolutions.Add(FreqResolutionVM.BITS32);
+                }
+            }
+            PlayCfg.SupportedResolutions = supportedResolutions;
+            PlayCfg.FreqResolution = FreqResolutionVM.BITS16;
+
+            var CompVM = new CompensationViewModel(ims, _channel) { Title = "Compensation" };
+            CompensationVMReference = CompVM;
+            CompensationVMReference.PropertyChanged += CompensationViewEventHandler;
+
+            var ConsoleTextVM = new HWServerConsoleViewModel() { Title = "Hardware Console" };
+            HWServerConsoleVMReference = ConsoleTextVM;
+
+            _toneBufferModel = new ToneBufferModel(channel, ims, StopImageCommand);
+
+            var documents = new List<DockWindowViewModel>();
+            var anchorables = new List<DockPaneViewModel>();
+
+            Initialise(documents);
+            if (thisIMS != null)
+            {
+                //if (thisIMS.Synth.Model != "iMS4")
+                {
+                    // WARNING: As of v1.2.0.50, Enhanced Tone must be added before Calibration.
+                    // If ETM is enabled at the point that an Image Project is loaded, all the anchorables
+                    // are reset, and the Calibration Reset conflicts with the ETM disable process.
+                    anchorables.Add(EnhancedToneVMReference);
+                }
+                anchorables.Add(SignalPathVM);
+                anchorables.Add(SyncDataVM);
+                anchorables.Add(CalibrationVMReference);
+                anchorables.Add(PlayConfigurationVMReference);
+                anchorables.Add(SysFuncVMReference);
+            }
+            anchorables.Add(ImageProjectTreeVMReference);
+            anchorables.Add(CompensationVMReference);
+            anchorables.Add(HWServerConsoleVMReference);
+
+            this.DockManagerViewModel = new DockManagerViewModel(documents, anchorables);
+            this.MenuViewModel = new MenuViewModel(documents, anchorables);
+
+            // Set Version Numbers
+            this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "iMS Studio App", Version = Assembly.GetExecutingAssembly().GetName().Version.ToString() });
+            this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "iMS Library", Version = iMS.LibVersion.GetVersion() });
+
+            var AppVer = new app_version.app_versionClient(_channel);
+            ImsHwServer.VersionInfo hwServerAppInfo = AppVer.app(new Google.Protobuf.WellKnownTypes.Empty());
+            ImsHwServer.VersionInfo hwServerLibInfo = AppVer.lib(new Google.Protobuf.WellKnownTypes.Empty());
+
+            this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "HW Server App", Version = hwServerAppInfo.AsString });
+            this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "HW Server Library", Version = hwServerLibInfo.AsString });
+            if (thisIMS == null)
+            {
+                this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "Synthesiser", Version = "Not Connected" });
+                this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "Controller", Version = "Not Connected" });
+            }
+            else
+            {
+                this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "Synthesiser", Version = thisIMS.Synth.Model + " " 
+                    + thisIMS.Synth.Version.Major + "." + thisIMS.Synth.Version.Minor + "." + thisIMS.Synth.Version.Revision});
+                this.MenuViewModel.ComponentVersionList.Add(new MenuViewModel.VersionInfo() { Name = "Controller", Version = thisIMS.Ctlr.Model + " "
+                    + thisIMS.Ctlr.Version.Major + "." + thisIMS.Ctlr.Version.Minor + "." + thisIMS.Ctlr.Version.Revision});
+            }
+
+            // Create New CompensationFunction from menu AO Device Chooser
+            this.MenuViewModel.CreateNewCompensationFunction += MenuViewModel_CreateNewCompensationFunction;
+
+            System.Windows.Threading.DispatcherTimer dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
+            dispatcherTimer.Tick += dispatcherTimer_Tick;
+            dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 200);
+            dispatcherTimer.Start();
+
+            progressBarTimer = new System.Windows.Threading.DispatcherTimer();
+            progressBarTimer.Tick += progressBarTimer_Tick;
+            progressBarTimer.Interval = new TimeSpan(0, 0, 0, 0, 10);
+            _progressPointPeriod = TimeSpan.Zero;
+        }
+
+        private void MenuViewModel_CreateNewCompensationFunction(object sender, Behaviour.NewCompensationFunctionEventArgs e)
+        {
+            this.AddExistingCompensationFunctionCommand(e.CompFunc);
+        }
+
+        // Interpolates the progress bar
+        private void progressBarTimer_Tick(object sender, EventArgs e)
+        {
+            var Interval = (DateTime.Now - _lastImageProgUpdate);
+            ImageProgress += (Interval.TotalMilliseconds / _progressPointPeriod.TotalMilliseconds);
+            if (ImageProgress > ImageLength) ImageProgress -= ImageLength;
+        }
+
+        private bool IsPlaying = false;
+        private bool IsToneEnabled = false;
+        private int statusBarUpdated = 0;
+        private void dispatcherTimer_Tick(object sender, EventArgs e)
+        {
+            if (thisIMS == null)
+            {
+                EnhancedToneVMReference.IsVisible = false;
+                SignalPathVM.IsVisible = false;
+                SyncDataVM.IsVisible = false;
+                CalibrationVMReference.IsVisible = false;
+                PlayConfigurationVMReference.IsVisible = false;
+                return;
+            }
+            //EnhancedToneVMReference.IsVisible = true;
+            SignalPathVM.IsVisible = true;
+            SyncDataVM.IsVisible = true;
+            CalibrationVMReference.IsVisible = true;
+            PlayConfigurationVMReference.IsVisible = true;
+
+            var ImgPL = new image_player.image_playerClient(_channel);
+            PlaybackStatus plstat = ImgPL.plstatus(new Google.Protobuf.WellKnownTypes.Empty());
+
+            bool temp = (plstat.Status == PlaybackStatus.Types.PBStatus.PbPending || plstat.Status == PlaybackStatus.Types.PBStatus.PbPlaying);
+            if (temp != IsPlaying)
+            {
+                CommandManager.InvalidateRequerySuggested();
+                IsPlaying = temp;
+                if (!IsPlaying)
+                {
+                    progressBarTimer.Stop();
+                    ImageProgressInDeterminate = false;
+                    LockEnhancedToneCommand.Execute(false);
+                    LockCalibToneCommand.Execute(false);
+                    LockDelaySliderCommand.Execute(false);
+                }
+            }
+            if (plstat.Progress > ImageLength) ImageProgress = 0;
+            else ImageProgress = plstat.Progress;
+
+            temp = _toneBufferModel.IsEnabled;
+            if (temp != IsToneEnabled)
+            {
+                CommandManager.InvalidateRequerySuggested();
+                IsToneEnabled = temp;
+                ImageProgressInDeterminate = IsToneEnabled;
+            }
+
+            // Reset status bar text
+            if (statusBarUpdated != 20)
+            {
+                statusBarUpdated++;
+            } else
+            {
+                StatusBarText = "";
+            }
+        }
+
+        public void Reset()
+        {
+            if (StopImage_CanExecute()) StopImage_Execute();
+
+            foreach (var anch in DockManagerViewModel.Anchorables) anch.Reset();
+
+            this.MenuViewModel.RemoveAll();
+
+            while (DockManagerViewModel.Documents.Count > 0)
+                DockManagerViewModel.Documents[0].IsClosed = true;
+
+            FileName = null;
+            this.IsDirty = false;
+
+            var documents = new List<DockWindowViewModel>();
+
+            Initialise(documents);
+
+            foreach (var dockWindow in documents)
+            {
+                this.DockManagerViewModel.AddNewDocument(dockWindow);
+                this.MenuViewModel.AddNewImageToWindowMenu(dockWindow);
+            }
+        }
+
+        bool UpdatingTree = false;
+        bool UpdatingDoc = false;
+
+        public void ClearAllIsEditingExceptThis(object sender)
+        {
+            foreach (var item in ImageProjectTreeVMReference.ImageProjectTable)
+            {
+                if (item != sender)
+                {
+                    item.IsEditing = false;
+                }
+                if (item.Items != null)
+                {
+                    foreach (ImageProjectTreeSubItems subitem in item.Items)
+                    {
+                        if (subitem != sender)
+                        {
+                            subitem.IsEditing = false;
+                        }
+                    }
+                }
+            }
+            foreach (var item in ImageProjectTreeVMReference.CompensationFunctionTable)
+                if (item != sender)
+                {
+                    item.IsEditing = false;
+                }
+            foreach (var item in ImageProjectTreeVMReference.ToneBufferTable)
+                if (item != sender)
+                {
+                    item.IsEditing = false;
+                }
+        }
+
+        private void ImagePropertyChangedEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var doc = (sender as ImageDockWindowViewModel);
+            // Find associated tree entry
+            ImageTreeSubItems tree = null;
+            foreach (var item in ImageProjectTreeVMReference.ImageProjectTable)
+            {
+                if (item.GetType() == typeof(ImageProjectItems))
+                {
+                    bool foundTree = false;
+                    foreach (ImageProjectTreeSubItems subitem in item.Items)
+                    {
+                        if (subitem.GetType() == typeof(ImageTreeSubItems))
+                        {
+                            if ((subitem.DocReference as ImageDockWindowViewModel) == doc)
+                            {
+                                tree = subitem as ImageTreeSubItems;
+                                foundTree = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (foundTree) break;
+                }
+                else if (item.GetType() == typeof(ImageTreeSubItems))
+                {
+                    if (((item as ImageTreeSubItems).DocReference as ImageDockWindowViewModel) == doc)
+                    {
+                        tree = (item as ImageTreeSubItems);
+                        break;
+                    }
+                }
+            }
+            if (tree != null && !UpdatingTree)
+            {
+                UpdatingDoc = true;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsSelected))
+                    tree.IsSelected = doc.IsSelected;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsClosed))
+                    tree.IsClosed = doc.IsClosed;
+                if (args.PropertyName == nameof(ImageDockWindowViewModel.ImageSize))
+                    tree.Entries = doc.ImageSize;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsDirty))
+                    this.IsDirty |= doc.IsDirty;
+                UpdatingDoc = false;
+            }
+        }
+
+        private void ImageTreeEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var tree = (sender as ImageTreeSubItems);
+            var doc = tree.DocReference;
+            if (!UpdatingDoc)
+            {
+                UpdatingTree = true;
+                ClearAllIsEditingExceptThis(sender);
+                if (args.PropertyName == nameof(ImageTreeSubItems.IsSelected))
+                    if (tree.IsSelected) doc.IsSelected = tree.IsSelected;
+                if (args.PropertyName == nameof(ImageTreeSubItems.IsClosed))
+                    doc.IsClosed = tree.IsClosed;
+                if (args.PropertyName == nameof(ImageTreeSubItems.Name))
+                    doc.Title = tree.Name;
+                if (args.PropertyName == nameof(ImageTreeSubItems.ImageRef))
+                    (doc as ImageDockWindowViewModel).ImageRef = tree.ImageRef;
+                UpdatingTree = false;
+            }
+        }
+
+        private void SequencePropertyChangedEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var doc = (sender as SequenceDockWindowViewModel);
+            // Find associated tree entry
+            ImageSeqTreeSubItems tree = null;
+            foreach (var item in ImageProjectTreeVMReference.ImageProjectTable)
+            {
+                if (item.GetType() == typeof(ImageProjectItems))
+                {
+                    bool foundTree = false;
+                    foreach (ImageProjectTreeSubItems subitem in item.Items)
+                    {
+                        if (subitem.GetType() == typeof(ImageSeqTreeSubItems))
+                        {
+                            if ((subitem.DocReference as SequenceDockWindowViewModel) == doc)
+                            {
+                                tree = subitem as ImageSeqTreeSubItems;
+                                foundTree = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (foundTree) break;
+                }
+            }
+
+            if (tree != null && !UpdatingTree)
+            {
+                UpdatingDoc = true;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsSelected))
+                    tree.IsSelected = doc.IsSelected;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsClosed))
+                    tree.IsClosed = doc.IsClosed;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsDirty))
+                    this.IsDirty |= doc.IsDirty;
+                UpdatingDoc = false;
+            }
+        }
+
+        private void SequenceTreeEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var tree = (sender as ImageSeqTreeSubItems);
+            var doc = tree.DocReference as SequenceDockWindowViewModel;
+            if (!UpdatingDoc)
+            {
+                UpdatingTree = true;
+                ClearAllIsEditingExceptThis(sender);
+                if (args.PropertyName == nameof(ImageSeqTreeSubItems.IsSelected))
+                    if (tree.IsSelected) doc.IsSelected = tree.IsSelected;
+                if (args.PropertyName == nameof(ImageSeqTreeSubItems.IsClosed))
+                    doc.IsClosed = tree.IsClosed;
+                if (args.PropertyName == nameof(ImageSeqTreeSubItems.ImageSequenceRef))
+                    (doc as SequenceDockWindowViewModel).Sequence = tree.ImageSequenceRef;
+                UpdatingTree = false;
+            }
+        }
+
+        private void CalibrationEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var calib = sender as CalibrationViewModel;
+            if (calib.STMEnable)
+            {
+                foreach (var document in DockManagerViewModel.Documents)
+                {
+                    var comp = (document as CompensationTableDockWindowViewModel);
+                    if (document.IsSelected && (document.GetType() == typeof(CompensationTableDockWindowViewModel)))
+                    {
+                        if (args.PropertyName == nameof(CalibrationViewModel.STMFreq))
+                        {
+                            comp.CompData[comp.RowSelected].PointFreq = calib.STMFreq;
+                            comp.GenerateAll.Execute(null);
+                        }
+                        else if (args.PropertyName == nameof(CalibrationViewModel.STMAmpl))
+                        {
+                            comp.CompData[comp.RowSelected].PointAmpl = calib.STMAmpl;
+                            comp.GenerateAmpl.Execute(null);
+                        }
+                        else if (args.PropertyName == nameof(CalibrationViewModel.STMPhase))
+                        {
+                            comp.CompData[comp.RowSelected].PointPhase = calib.STMPhase;
+                            comp.GeneratePhase.Execute(null);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void CompensationPropertyChangedEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var doc = sender as CompensationTableDockWindowViewModel;
+            // Find associated tree entry
+            CompensationFunctionTreeSubItems tree = null;
+            foreach (CompensationFunctionTreeSubItems item in ImageProjectTreeVMReference.CompensationFunctionTable)
+            {
+                if ((item.DocReference as CompensationTableDockWindowViewModel) == doc)
+                {
+                    tree = item;
+                    break;
+                }
+            }
+
+            if (tree != null && !UpdatingTree)
+            {
+                UpdatingDoc = true;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsSelected))
+                    tree.IsSelected = doc.IsSelected;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsClosed))
+                    tree.IsClosed = doc.IsClosed;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsDirty))
+                    this.IsDirty |= doc.IsDirty;
+                if (args.PropertyName == nameof(CompensationTableDockWindowViewModel.RowSelected))
+                {
+                    if (CalibrationVMReference.STMEnable)
+                    {
+                        var plot = CompensationVM.PlotType;
+                        int index = doc.RowSelected;
+                        CalibrationVMReference.SetFAP(new FAP(doc.CompData[index].PointFreq, doc.CompData[index].PointAmpl, doc.CompData[index].PointPhase));
+                        // Restore Plot to previous type
+                        CompensationVM.PlotType = plot;
+                    }
+                }
+                UpdatingDoc = false;
+            }
+        }
+
+        private void CompensationTreeEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var tree = sender as CompensationFunctionTreeSubItems;
+            var doc = tree.DocReference as CompensationTableDockWindowViewModel;
+            if (!UpdatingDoc)
+            {
+                UpdatingTree = true;
+                ClearAllIsEditingExceptThis(sender);
+                if (args.PropertyName == nameof(CompensationFunctionTreeSubItems.IsSelected))
+                    if (tree.IsSelected) doc.IsSelected = tree.IsSelected;
+                if (args.PropertyName == nameof(CompensationFunctionTreeSubItems.IsClosed))
+                    doc.IsClosed = tree.IsClosed;
+                if (args.PropertyName == nameof(CompensationFunctionTreeSubItems.Name))
+                    doc.Title = tree.Name;
+                if (args.PropertyName == nameof(CompensationFunctionTreeSubItems.CompensationFunctionRef))
+                    (doc as CompensationTableDockWindowViewModel).CompRef = tree.CompensationFunctionRef;
+                UpdatingTree = false;
+            }
+        }
+
+        private void ToneBufferPropertyChangedEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var doc = sender as ToneBufferDockWindowViewModel;
+            // Find associated tree entry
+            ToneBufferTreeSubItems tree = null;
+            foreach (ToneBufferTreeSubItems item in ImageProjectTreeVMReference.ToneBufferTable)
+            {
+                if ((item.DocReference as ToneBufferDockWindowViewModel) == doc)
+                {
+                    tree = item;
+                    break;
+                }
+            }
+
+            if (tree != null && !UpdatingTree)
+            {
+                UpdatingDoc = true;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsSelected))
+                    tree.IsSelected = doc.IsSelected;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsClosed))
+                    tree.IsClosed = doc.IsClosed;
+                if (args.PropertyName == nameof(DockWindowViewModel.IsDirty))
+                    this.IsDirty |= doc.IsDirty;
+                if (args.PropertyName == nameof(ToneBufferDockWindowViewModel.RowUpdated))
+                {
+                    if ((sender as DockWindowViewModel).IsPlaying)
+                    {
+                        ToneBufferDockWindowViewModel tbuf = sender as ToneBufferDockWindowViewModel;
+                        _toneBufferModel.DownloadSingleEntry(tbuf, tbuf.RowUpdated);
+                    }
+                }
+                if (args.PropertyName == nameof(ToneBufferDockWindowViewModel.RowSelected))
+                {
+                    if ((sender as DockWindowViewModel).IsPlaying)
+                    {
+                        _toneBufferModel.SelectToneIndex((sender as ToneBufferDockWindowViewModel).RowSelected);
+                    }
+                }
+                
+                UpdatingDoc = false;
+            }
+        }
+
+        private void ToneBufferTreeEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var tree = sender as ToneBufferTreeSubItems;
+            var doc = tree.DocReference as ToneBufferDockWindowViewModel;
+            if (!UpdatingDoc)
+            {
+                UpdatingTree = true;
+                ClearAllIsEditingExceptThis(sender);
+                if (args.PropertyName == nameof(ToneBufferTreeSubItems.IsSelected))
+                    if (tree.IsSelected) doc.IsSelected = tree.IsSelected;
+                if (args.PropertyName == nameof(ToneBufferTreeSubItems.IsClosed))
+                    doc.IsClosed = tree.IsClosed;
+                if (args.PropertyName == nameof(ToneBufferTreeSubItems.Name))
+                    doc.Title = tree.Name;
+                if (args.PropertyName == nameof(ToneBufferTreeSubItems.ToneBufferRef))
+                    (doc as ToneBufferDockWindowViewModel).TBufRef = tree.ToneBufferRef;
+                UpdatingTree = false;
+            }
+        }
+
+        private void SignalPathViewEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var model = sender as SignalPathViewModel;
+
+            // Mirror X/Y to link Signal Path faders
+
+            if (args.PropertyName == nameof(SignalPathViewModel.XYPairing))
+            {
+                CompensationVMReference.XYPairing = model.XYPairing;
+            }
+        }
+
+        private void CompensationViewEventHandler(object sender, PropertyChangedEventArgs args)
+        {
+            var model = sender as CompensationViewModel;
+            foreach (var document in DockManagerViewModel.Documents)
+            {
+                if (document.GetType() == typeof(CompensationTableDockWindowViewModel))
+                {
+                    if (args.PropertyName == nameof(CompensationViewModel.GlobalScope))
+                        (document as CompensationTableDockWindowViewModel).GlobalScope = model.GlobalScope;
+                    else if (args.PropertyName == nameof(CompensationViewModel.RFChannels))
+                        (document as CompensationTableDockWindowViewModel).RFChannels = model.RFChannels;
+                }
+            }
+
+            // Mirror X/Y to link Signal Path faders
+            if (args.PropertyName == nameof(CompensationViewModel.XYPairing))
+            {
+                SignalPathVM.XYPairing = model.XYPairing;
+            }
+        }
+
+            public void Initialise(List<DockWindowViewModel> documents)
+        {
+            foreach (var file in Project.ImageGroupContainer)
+            {
+                var imgGroup_treeitem = new ImageProjectItems(file);
+                ImageProjectTreeVMReference.ImageProjectTable.Add(imgGroup_treeitem);
+
+                foreach (var img in file)
+                {
+                    var document = new ImageDockWindowViewModel(img) { Title = img.Name };
+                    documents.Add(document);
+                    var img_treeitem = new ImageTreeSubItems(img, document);
+                    imgGroup_treeitem.Items.Add(img_treeitem);
+
+                    // Enable Cross Selection between Tree View and Document Tab
+                    document.PropertyChanged += ImagePropertyChangedEventHandler;
+                    img_treeitem.PropertyChanged += ImageTreeEventHandler;
+                }
+
+                var sequence = new SequenceDockWindowViewModel(file) { Title = file.Name + " [Sequence]" } ;
+                documents.Add(sequence);
+                var seq_treeitem = new ImageSeqTreeSubItems(file.Sequence, sequence);
+                imgGroup_treeitem.Items.Add(seq_treeitem);
+
+                // Enable Cross Selection between Tree View and Document Tab
+                sequence.PropertyChanged += SequencePropertyChangedEventHandler;
+                seq_treeitem.PropertyChanged += SequenceTreeEventHandler;
+                imgGroup_treeitem.PropertyChanged += (o, e) =>
+                {
+                    if (e.PropertyName == nameof(ImageProjectItems.Name))
+                        sequence.Title = imgGroup_treeitem.Name + " [--sequence--]";
+                };
+            }
+
+            foreach (var cfunc in Project.CompensationFunctionContainer)
+            {
+                var compFunc = new CompensationTableDockWindowViewModel(cfunc, CompensationVM.RFChannels, CompensationVM.GlobalScope,
+                    GenerateAmplitude, GeneratePhase, GenerateSyncDig, GenerateSyncAnlg) { Title = cfunc.Name };
+                documents.Add(compFunc);
+                var comp_treeitem = new CompensationFunctionTreeSubItems(cfunc, compFunc);
+                ImageProjectTreeVMReference.CompensationFunctionTable.Add(comp_treeitem);
+                // Enable Cross Selection between Tree View and Document Tab
+                compFunc.PropertyChanged += CompensationPropertyChangedEventHandler;
+                comp_treeitem.PropertyChanged += CompensationTreeEventHandler;
+            }
+
+            foreach (var tbuf in Project.ToneBufferContainer)
+            {
+                var toneBuf = new ToneBufferDockWindowViewModel(tbuf) { Title = tbuf.Name };
+                documents.Add(toneBuf);
+                var tb_treeitem = new ToneBufferTreeSubItems(tbuf, toneBuf);
+                ImageProjectTreeVMReference.ToneBufferTable.Add(tb_treeitem);
+
+                // Enable Cross Selection between Tree View and Document Tab
+                toneBuf.PropertyChanged += ToneBufferPropertyChangedEventHandler;
+                tb_treeitem.PropertyChanged += ToneBufferTreeEventHandler;
+            }
+
+            foreach (var img in Project.FreeImageContainer)
+            {
+                var document = new ImageDockWindowViewModel(img) { Title = img.Name };
+                documents.Add(document);
+                var img_treeitem = new ImageTreeSubItems(img, document);
+                ImageProjectTreeVMReference.ImageProjectTable.Add(img_treeitem);
+
+                // Enable Cross Selection between Tree View and Document Tab
+                document.PropertyChanged += ImagePropertyChangedEventHandler;
+                img_treeitem.PropertyChanged += ImageTreeEventHandler;
+            }
+        }
+
+        public ImageProject Project {
+            get { return _ImageProject; }
+            private set
+            {
+                _ImageProject = value;
+            }
+        }
+
+        private string _statusBarText;
+        public string StatusBarText
+        {
+            get { return _statusBarText; }
+            set
+            {
+                if (_statusBarText != value)
+                {
+                    _statusBarText = value;
+                    if (!string.IsNullOrEmpty(value))
+                        statusBarUpdated = 0;  // Reset counter that returns text to blank after an interval timeout
+                    OnPropertyChanged(nameof(StatusBarText));
+                }
+            }
+        }
+
+        // Create Command Handlers for Toolbar buttons
+        #region PlayImageCommand
+        private ICommand _PlayImageCommand;
+        public ICommand PlayImageCommand
+        {
+            get
+            {
+                if (_PlayImageCommand == null)
+                    _PlayImageCommand = new RelayCommand(call => PlayImage_Execute(), enable => PlayImage_CanExecute());
+                return _PlayImageCommand;
+            }
+        }
+
+        async void PlayImage_Execute()
+        {
+            foreach (var document in DockManagerViewModel.Documents)
+            {
+                if (document.IsSelected)
+                {
+                    if (document.GetType() == typeof(ToneBufferDockWindowViewModel))
+                    {
+                        _toneBufferModel.AmplComp = (document as ToneBufferDockWindowViewModel).AmplCompEnabled ? SignalPath.Compensation.ACTIVE : SignalPath.Compensation.BYPASS;
+                        _toneBufferModel.PhaseComp = (document as ToneBufferDockWindowViewModel).PhaseCompEnabled ? SignalPath.Compensation.ACTIVE : SignalPath.Compensation.BYPASS;
+                        _toneBufferModel.TBufControl = (document as ToneBufferDockWindowViewModel).TBufControl;
+                        _toneBufferModel.DownloadFullBuffer(document as ToneBufferDockWindowViewModel);
+                        document.IsPlaying = true;
+                        StatusBarText = "Playing from Tone Buffer";
+                        LockEnhancedToneCommand.Execute(true);
+                        LockCalibToneCommand.Execute(true);
+                        LockDelaySliderCommand.Execute(true);
+                    }
+                    else if (document.GetType() == typeof(ImageDockWindowViewModel))
+                    {
+                        image_table_entry entry;
+                        using (new WaitCursor())
+                        {
+                            // Create image on server
+                            var ImgDL = new image_downloader.image_downloaderClient(_channel);
+                            image_header hdr = new image_header();
+                            hdr.Name = document.Title;
+                            hdr.ClockRate = 0.5;
+                            hdr.ExtDivide = 1;
+                            DownloadHandle handle = ImgDL.create(hdr);
+
+                            // Add image points
+                            using (var call = ImgDL.add())
+                            {
+                                foreach (var pt in (document as ImageDockWindowViewModel).ImageData)
+                                {
+                                    image_point point = new image_point();
+                                    point.Context = handle;
+                                    point.FreqCh1 = pt.FreqCh1; point.FreqCh2 = pt.FreqCh2; point.FreqCh3 = pt.FreqCh3; point.FreqCh4 = pt.FreqCh4;
+                                    point.AmplCh1 = pt.AmplCh1; point.AmplCh2 = pt.AmplCh2; point.AmplCh3 = pt.AmplCh3; point.AmplCh4 = pt.AmplCh4;
+                                    point.PhsCh1 = pt.PhaseCh1; point.PhsCh2 = pt.PhaseCh2; point.PhsCh3 = pt.PhaseCh3; point.PhsCh4 = pt.PhaseCh4;
+                                    point.Synca1 = pt.SyncA1; point.Synca2 = pt.SyncA2; point.Syncd = pt.SyncD;
+                                    await call.RequestStream.WriteAsync(point);
+                                }
+                                await call.RequestStream.CompleteAsync();
+
+                                Google.Protobuf.WellKnownTypes.Empty empty = await call.ResponseAsync;
+                            }
+
+                            var ImgFmt = new iMS.ImageFormat();
+                            var fmt = new ImsHwServer.image_format();
+
+                            fmt.Channels = (uint)ImgFmt.Channels;
+                            fmt.FreqBytes = (uint)ImgFmt.FreqBytes;
+                            fmt.AmplBytes = (uint)ImgFmt.AmplBytes;
+                            fmt.PhaseBytes = (uint)ImgFmt.PhaseBytes;
+                            fmt.SyncBytes = (uint)ImgFmt.SyncBytes;
+                            fmt.EnableAmpl = ImgFmt.EnableAmpl;
+                            fmt.EnablePhase = ImgFmt.EnablePhase;
+                            fmt.EnableSyncDig = ImgFmt.EnableSyncDig;
+                            fmt.SyncAnlgChannels = (uint)ImgFmt.SyncAnlgChannels;
+                            fmt.CombineChannelPairs = ImgFmt.CombineChannelPairs;
+                            fmt.CombineAllChannels = ImgFmt.CombineAllChannels;
+                            fmt.Context = handle;
+
+                            fmt.FreqBytes = (uint)PlayConfigurationVM.FreqResolution;
+
+                            // Set Image Format
+                            ImgDL.format(fmt);
+
+                            ImageLength = (document as ImageDockWindowViewModel).ImageData.Count;
+                            ImageProgress = 0;
+                            ImageProgressInDeterminate = false;
+                            _progressPointPeriod = TimeSpan.FromMilliseconds(1.0 / (document as ImageDockWindowViewModel).ImageClockRate);
+
+                            // Download to HW
+                            DownloadStatus dlstat = ImgDL.download(handle);
+
+                            // Wait until finished then get Image UUID
+                            System.Threading.SpinWait.SpinUntil(() => ImgDL.dlstatus(handle).Status != DownloadStatus.Types.DLStatus.Downloading, TimeSpan.FromSeconds(20));
+                           // while (dlstat.Status == DownloadStatus.Types.DLStatus.Downloading)
+                            {
+                                dlstat = ImgDL.dlstatus(handle);
+                            }
+
+                            if (dlstat.Status == DownloadStatus.Types.DLStatus.Downloading)
+                            {
+                                MessageBox.Show("Timed Out Downloading Image!", "Download Timeout", MessageBoxButton.OK, MessageBoxImage.Error);
+                                return;
+                            }
+                            else if (dlstat.Status != DownloadStatus.Types.DLStatus.DlFinished)
+                            {
+                                MessageBox.Show("Error Downloading Image!", "Download Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                                return;
+                            }
+                           
+                            // Look for Image UUID in Server Index Table and retain for use in player
+                            var ImgTable = new image_table_viewer.image_table_viewerClient(_channel);
+                            entry = new image_table_entry();
+                            using (var table = ImgTable.image_detail(thisIMS))
+                            {
+                                while (await table.ResponseStream.MoveNext())
+                                {
+                                    entry = table.ResponseStream.Current;
+                                    if (entry.Uuid == dlstat.Uuid)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Play Image
+                        var ImgPL = new image_player.image_playerClient(_channel);
+                        var cfg = new ImsHwServer.PlayConfiguration();
+                        cfg.Img = entry;
+                        switch (_playConfig.int_ext)
+                        {
+                            case ImagePlayer.PointClock.EXTERNAL: cfg.IntExt = ImsHwServer.PlayConfiguration.Types.PointClock.ClkExternal; break;
+                            case ImagePlayer.PointClock.INTERNAL: cfg.IntExt = ImsHwServer.PlayConfiguration.Types.PointClock.ClkInternal; break;
+                        }
+                        switch (_playConfig.trig)
+                        {
+                            case ImagePlayer.ImageTrigger.CONTINUOUS: cfg.Trig = ImsHwServer.PlayConfiguration.Types.ImageTrigger.TrigContinuous; break;
+                            case ImagePlayer.ImageTrigger.EXTERNAL: cfg.Trig = ImsHwServer.PlayConfiguration.Types.ImageTrigger.TrigExternal; break;
+                            case ImagePlayer.ImageTrigger.HOST: cfg.Trig = ImsHwServer.PlayConfiguration.Types.ImageTrigger.TrigHost; break;
+                            case ImagePlayer.ImageTrigger.POST_DELAY: cfg.Trig = ImsHwServer.PlayConfiguration.Types.ImageTrigger.TrigPostDelay; break;
+                        }
+                        switch (_playConfig.rpts)
+                        {
+                            case ImageRepeats.FOREVER: cfg.Rpts = ImsHwServer.PlayConfiguration.Types.Repeats.RptsForever; break;
+                            case ImageRepeats.NONE: cfg.Rpts = ImsHwServer.PlayConfiguration.Types.Repeats.RptsNone; break;
+                            case ImageRepeats.PROGRAM: cfg.Rpts = ImsHwServer.PlayConfiguration.Types.Repeats.RptsProgram; break;
+                        }
+                        cfg.NRpts = _playConfig.n_rpts;
+                        cfg.ClockRate = (document as ImageDockWindowViewModel).ImageClockRate;
+                        switch (_playConfig.clk_pol)
+                        {
+                            case Polarity.NORMAL: cfg.ClkPol = ImsHwServer.PlayConfiguration.Types.Polarity.PolNormal; break;
+                            case Polarity.INVERSE: cfg.ClkPol = ImsHwServer.PlayConfiguration.Types.Polarity.PolInverse; break;
+                        }
+                        switch (_playConfig.trig_pol)
+                        {
+                            case Polarity.NORMAL: cfg.TrigPol = ImsHwServer.PlayConfiguration.Types.Polarity.PolNormal; break;
+                            case Polarity.INVERSE: cfg.TrigPol = ImsHwServer.PlayConfiguration.Types.Polarity.PolInverse; break;
+                        }
+                        cfg.PostDelay = _playConfig.del.TotalSeconds;
+                        cfg.ExtDivide = (uint)((document as ImageDockWindowViewModel).ExtClockDivide);
+
+                        cfg.AmplCompEnabled = PlayConfigurationVM.AmplCompEnabled;
+                        cfg.PhaseCompEnabled = PlayConfigurationVM.PhaseCompEnabled;
+
+                        PlaybackStatus status;
+                        if (_playConfig.trig == ImagePlayer.ImageTrigger.EXTERNAL)
+                        {
+                            status = ImgPL.play_on_ext_trigger(cfg);
+                        }
+                        else
+                        {
+                            status = ImgPL.play(cfg);
+                        }
+
+                        if (status.Status == PlaybackStatus.Types.PBStatus.PbError)
+                        {
+                            StatusBarText = "Error Playing Image \"" + document.Title + "\"";
+                        }
+                        else
+                        {
+                            status = ImgPL.plstatus(new Google.Protobuf.WellKnownTypes.Empty());
+                            StatusBarText = "Playing Image \"" + document.Title + "\"";
+
+                            if ((_progressPointPeriod.TotalMilliseconds * ImageLength) > 1000)
+                            {
+                                progressBarTimer.Start();
+                            } else
+                            {
+                                IsPlaying = true;
+                                CommandManager.InvalidateRequerySuggested();
+                                ImageProgressInDeterminate = true;
+                            }
+
+                            LockEnhancedToneCommand.Execute(true);
+                            LockCalibToneCommand.Execute(true);
+                            LockDelaySliderCommand.Execute(true);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        bool PlayImage_CanExecute()
+        {
+            if (thisIMS == null) return false;
+
+            bool DocIsSelected = false;
+            foreach(var document in DockManagerViewModel.Documents)
+            {
+                if (document.IsSelected && 
+                    (document.GetType() == typeof(ImageDockWindowViewModel)) ||
+                    (document.GetType() == typeof(ToneBufferDockWindowViewModel)) )
+                {
+                    DocIsSelected = true;
+                    break;
+                }
+            }
+            //var ImgPL = new image_player.image_playerClient(_channel);
+            //PlaybackStatus plstat = ImgPL.plstatus(new Google.Protobuf.WellKnownTypes.Empty());
+
+            if (DocIsSelected && !IsPlaying/*(plstat.Status != PlaybackStatus.Types.PBStatus.PbPlaying)*/ 
+                && (!_toneBufferModel.IsEnabled)
+                && (!_calibToneModel.CalibrationEnable)
+                && (!_enhToneModel.EnhancedToneEnable))
+                return true;
+            else
+                return false;
+        }
+
+        private int _imageLen;
+        public int ImageLength
+        {
+            get { return _imageLen; }
+            set
+            {
+                if (_imageLen != value)
+                {
+                    _imageLen = value;
+                    OnPropertyChanged(nameof(ImageLength));
+                }
+            }
+        }
+
+        private DateTime _lastImageProgUpdate;
+        private double _imageProgress;
+        public double ImageProgress
+        {
+            get { return _imageProgress; }
+            set
+            {
+                if (_imageProgress != value)
+                {
+                    _imageProgress = value;
+                    _lastImageProgUpdate = DateTime.Now;
+                    OnPropertyChanged(nameof(ImageProgress));
+                }
+            }
+        }
+
+        private bool _ImageProgressInDeterminate;
+            public bool ImageProgressInDeterminate
+        {
+            get { return _ImageProgressInDeterminate; }
+            set
+            {
+                if (_ImageProgressInDeterminate != value)
+                {
+                    _ImageProgressInDeterminate = value;
+                    OnPropertyChanged(nameof(ImageProgressInDeterminate));
+                }
+            }
+        }
+        #endregion
+
+        #region StopImageCommand
+        private ICommand _StopImageCommand;
+        public ICommand StopImageCommand
+        {
+            get
+            {
+                if (_StopImageCommand == null)
+                    _StopImageCommand = new RelayCommand(call => StopImage_Execute(), enable => StopImage_CanExecute());
+                return _StopImageCommand;
+            }
+        }
+
+        void StopImage_Execute()
+        {
+            // Stop Image
+            var ImgStop = new image_player.image_playerClient(_channel);
+            PlaybackStatus status = ImgStop.stop(new Google.Protobuf.WellKnownTypes.Empty());
+            foreach(var document in DockManagerViewModel.Documents)
+            {
+                document.IsPlaying = false;
+            }
+            if (_toneBufferModel.IsEnabled)
+            {
+                _toneBufferModel.IsEnabled = false;
+            }
+            progressBarTimer.Stop();
+            ImageProgressInDeterminate = false;
+            LockEnhancedToneCommand.Execute(false);
+            LockCalibToneCommand.Execute(false);
+            LockDelaySliderCommand.Execute(false);
+            StatusBarText = "Stopped";
+        }
+
+        bool StopImage_CanExecute()
+        {
+            if (thisIMS == null) return false;
+
+            //var ImgPL = new image_player.image_playerClient(_channel);
+            //PlaybackStatus plstat = ImgPL.plstatus(new Google.Protobuf.WellKnownTypes.Empty());
+
+            if (IsPlaying/*(plstat.Status == PlaybackStatus.Types.PBStatus.PbPlaying)*/ || (_toneBufferModel.IsEnabled))
+                return true;
+            else
+                return false;
+        }
+        #endregion
+
+        #region ForceStopImageCommand
+        private ICommand _ForceStopImageCommand;
+        public ICommand ForceStopImageCommand
+        {
+            get
+            {
+                if (_ForceStopImageCommand == null)
+                    _ForceStopImageCommand = new RelayCommand(call => ForceStopImage_Execute(), enable => StopImage_CanExecute());
+                return _ForceStopImageCommand;
+            }
+        }
+
+        void ForceStopImage_Execute()
+        {
+            // Stop Image
+            var ImgStop = new image_player.image_playerClient(_channel);
+            PlaybackStatus status = ImgStop.stop_immediately(new Google.Protobuf.WellKnownTypes.Empty());
+            foreach (var document in DockManagerViewModel.Documents)
+            {
+                document.IsPlaying = false;
+            }
+            _toneBufferModel.IsEnabled = false;
+            progressBarTimer.Stop();
+            ImageProgressInDeterminate = false;
+            LockEnhancedToneCommand.Execute(false);
+            LockCalibToneCommand.Execute(false);
+            LockDelaySliderCommand.Execute(false);
+            StatusBarText = "Stopped!";
+        }
+
+        #endregion
+
+        #region EmergencyStopCommand
+        private ICommand _EmergencyStopCommand;
+        public ICommand EmergencyStopCommand
+        {
+            get
+            {
+                if (_EmergencyStopCommand == null)
+                    _EmergencyStopCommand = new RelayCommand(call => EmergencyStopCommand_Execute());
+                return _EmergencyStopCommand;
+            }
+        }
+
+        void EmergencyStopCommand_Execute()
+        {
+            // Turn Off Amplifier, set DDS Power to minimum and switch amplitude control to off
+            SignalPathVM.Reset();
+
+            // Stop Image
+            var ImgStop = new image_player.image_playerClient(_channel);
+            PlaybackStatus status = ImgStop.stop_immediately(new Google.Protobuf.WellKnownTypes.Empty());
+
+            foreach (var document in DockManagerViewModel.Documents)
+            {
+                document.IsPlaying = false;
+            }
+            _toneBufferModel.IsEnabled = false;
+
+            LockEnhancedToneCommand.Execute(false);
+            LockCalibToneCommand.Execute(false);
+            LockDelaySliderCommand.Execute(false);
+            // Use Calibration Tone to set DDS output to zero
+            CalibrationVMReference.Reset();
+        }
+
+        #endregion
+
+        #region AddNewImageGroupCommand
+        private ICommand _AddNewImageGroupCommand;
+        public ICommand AddNewImageGroupCommand
+        {
+            get
+            {
+                if (_AddNewImageGroupCommand == null)
+                    _AddNewImageGroupCommand = new RelayCommand(call => AddNewImageGroup_Execute());
+                return _AddNewImageGroupCommand;
+            }
+        }
+               
+        void AddNewImageGroup_Execute()
+        {
+            // Create new Empty Image Group in project
+            var file = new ImageGroup("New Image Group");
+            this.Project.ImageGroupContainer.Add(file);
+
+            // [bug]: Adding to the IFC seems to copy by value resulting in loss of reference to the underlying object.  Recapture it.
+            file = Project.ImageGroupContainer.Last();
+
+            // Add the entry to the Project Tree before all the free images and deselect all other items in tree
+            var newImgProj = new ImageProjectItems(file);
+            int IPICount = 0;
+            foreach (var item in ImageProjectTreeVMReference.ImageProjectTable)
+            {
+                if (item.GetType() != typeof(ImageProjectItems)) break;
+                IPICount++;
+            }
+            ImageProjectTreeVMReference.ImageProjectTable.Insert(IPICount, newImgProj);
+
+            // Add the new sequence window
+            var sequence = new SequenceDockWindowViewModel(file) { Title = file.Name + " [--sequence--]" };
+            DockManagerViewModel.AddNewDocument(sequence);
+
+            // Add one default entry
+            sequence.SequenceData.Add(new ImageSequenceEntryViewModel());
+
+            // And add to the window menu
+            MenuViewModel.AddNewImageToWindowMenu(sequence);
+
+            var seq_treeitem = new ImageSeqTreeSubItems(file.Sequence, sequence);
+            newImgProj.Items.Add(seq_treeitem);
+
+            // Enable Cross Selection between Tree View and Document Tab
+            sequence.PropertyChanged += SequencePropertyChangedEventHandler;
+            seq_treeitem.PropertyChanged += SequenceTreeEventHandler;
+            newImgProj.PropertyChanged += (o, e) =>
+            {
+                if (e.PropertyName == nameof(ImageProjectItems.Name))
+                    sequence.Title = newImgProj.Name + " [--sequence--]";
+            };
+
+                // Select new entry
+            newImgProj.IsSelected = true;
+            newImgProj.IsEditing = true;
+            this.IsDirty = true;
+        }
+        #endregion
+
+        #region AddNewImageCommand
+        private ICommand _AddNewImageCommand;
+        public ICommand AddNewImageCommand
+        {
+            get
+            {
+                if (_AddNewImageCommand == null)
+                    _AddNewImageCommand = new RelayCommand(call => AddNewImage_Execute());
+                return _AddNewImageCommand;
+            }
+        }
+
+        void AddNewImage_Execute()
+        {
+            // Create new Empty Image in project
+            var img = new iMSImage("New Image");
+
+            // Create 2 initial empty points
+            img.Add(new ImagePoint());
+            img.Add(new ImagePoint());
+
+            ImageDockWindowViewModel document;
+            ImageTreeSubItems newImg;
+            if (ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry() == null)
+            {
+                this.Project.FreeImageContainer.Add(img);
+                // [bug]: Adding to the IFC seems to copy by value resulting in loss of reference to the underlying object.  Recapture it.
+                img = this.Project.FreeImageContainer.Last();
+
+                // Add the new document window
+                document = new ImageDockWindowViewModel(img) { Title = img.Name };
+                DockManagerViewModel.AddNewDocument(document);
+
+                // Add the entry to the Project Tree and deselect all other items in tree
+                newImg = new ImageTreeSubItems(img, document);
+                ImageProjectTreeVMReference.ImageProjectTable.Add(newImg);
+            }
+            else
+            {
+                ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry().ImageGroupRef.Add(img);
+                // [bug]: Adding to the IFC seems to copy by value resulting in loss of reference to the underlying object.  Recapture it.
+                img = ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry().ImageGroupRef.Last();
+
+                // Add the new document window
+                document = new ImageDockWindowViewModel(img) { Title = img.Name };
+                DockManagerViewModel.AddNewDocument(document);
+
+                // Add the entry to the Project Tree and deselect all other items in tree
+                newImg = new ImageTreeSubItems(img, document);
+                ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry().Items.Insert(
+                    ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry().Items.Count - 1, newImg);
+            }
+
+            // And add to the window menu
+            MenuViewModel.AddNewImageToWindowMenu(document);
+
+            // Enable Cross Selection between Tree View and Document Tab
+            document.PropertyChanged += ImagePropertyChangedEventHandler;
+            newImg.PropertyChanged += ImageTreeEventHandler;
+
+            // Select new entry
+            newImg.IsSelected = true;
+
+            newImg.IsEditing = true;
+            this.IsDirty = true;
+        }
+        #endregion
+
+        private void ReenumerateImages()
+        {
+            int IPICount = 0;
+            foreach (var item in ImageProjectTreeVMReference.ImageProjectTable)
+            {
+                if (item.GetType() != typeof(ImageProjectItems)) break;
+                IPICount++;
+            }
+            // Re-enumerate Subtrees and documents which may have lost their reference following the deque modification in the C++ layer
+            for (int i = 0; i < IPICount; i++)
+            {
+                ImageGroup group = Project.ImageGroupContainer[i];
+                (ImageProjectTreeVMReference.ImageProjectTable[i] as ImageProjectItems).ImageGroupRef = group;
+                for (int j = 0; j < group.Count; j++)
+                {
+                    iMSImage img = group[j];
+                    ((ImageProjectTreeVMReference.ImageProjectTable[i] as ImageProjectItems).Items[j] as ImageTreeSubItems).ImageRef = img;
+                }
+                ImageSequence seq = group.Sequence;
+                ((ImageProjectTreeVMReference.ImageProjectTable[i] as ImageProjectItems).Items[group.Count] as ImageSeqTreeSubItems).ImageSequenceRef = seq;
+            }
+            for (int i = IPICount; i < (IPICount + Project.FreeImageContainer.Count); i++)
+            {
+                iMSImage img = Project.FreeImageContainer[i - IPICount];
+                (ImageProjectTreeVMReference.ImageProjectTable[i] as ImageTreeSubItems).ImageRef = img;
+            }
+        }
+
+        #region DeleteImageCommand
+        private ICommand _DeleteImageCommand;
+        public ICommand DeleteImageCommand
+        {
+            get
+            {
+                if (_DeleteImageCommand == null)
+                    _DeleteImageCommand = new RelayCommand(call => DeleteImageCommand_Execute(), enable => DeleteImageCommand_CanExecute());
+                return _DeleteImageCommand;
+            }
+        }
+
+        void DeleteImageCommand_Execute()
+        {
+            var subitem = ImageProjectTreeVMReference.GetSelectedImageEntry();
+            if (subitem == null)
+            {
+                // Delete Image Group
+                var item = ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry();
+                if (MessageBoxResult.Yes != MessageBox.Show("Delete Image Group \"" + item.Name + "\"?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Exclamation)) return;
+
+                // this relies on list being in same order as in the project (which it always should be)
+                Project.ImageGroupContainer.RemoveAt(ImageProjectTreeVMReference.ImageProjectTable.IndexOf(item));
+                // this one sometimes loses the reference to the object in the project
+                //Project.ImageGroupContainer.Remove(item.ImageGroupRef);
+                ImageProjectTreeVMReference.ImageProjectTable.Remove(item);
+                foreach (ImageProjectTreeSubItems imgitem in item.Items)
+                {
+                    MenuViewModel.RemoveImageFromWindowMenu(imgitem.DocReference);
+                    imgitem.IsClosed = true;
+                }
+            }
+            else
+            {
+                // Delete Image
+                if (MessageBoxResult.Yes != MessageBox.Show("Delete Image \"" + subitem.DocReference.Title + "\"?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Exclamation)) return;
+                if (ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry() != null)
+                {
+                    // this relies on list being in same order as in the project (which it always should be)
+                    Project.ImageGroupContainer[ImageProjectTreeVMReference.ImageProjectTable.IndexOf(ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry())]
+                        .RemoveAt(ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry().Items.IndexOf(subitem));
+                    // this one sometimes loses the reference to the object in the project
+                    //Project.ImageGroupContainer[ImageProjectTreeVMReference.ImageProjectTable.IndexOf(ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry())].Remove(item.ImageRef);
+                    MenuViewModel.RemoveImageFromWindowMenu(subitem.DocReference);
+                    ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry().Items.Remove(subitem);
+                    subitem.IsClosed = true;
+                }
+                else
+                {
+                    int IPICount = 0;
+                    foreach (var item in ImageProjectTreeVMReference.ImageProjectTable)
+                    {
+                        if (item.GetType() != typeof(ImageProjectItems)) break;
+                        IPICount++;
+                    }
+                    int index = ImageProjectTreeVMReference.ImageProjectTable.IndexOf(subitem);
+                    ImageProjectTreeVMReference.ImageProjectTable.Remove(subitem);
+                    MenuViewModel.RemoveImageFromWindowMenu(subitem.DocReference);
+                    Project.FreeImageContainer.RemoveAt(index - IPICount);
+                    subitem.IsClosed = true;
+
+                }
+            }
+            ReenumerateImages();
+            this.IsDirty = true;
+        }
+
+        bool DeleteImageCommand_CanExecute()
+        {
+            if (ImageProjectTreeVMReference.GetSelectedImageEntry() != null)
+            {
+                if (ImageProjectTreeVMReference.GetSelectedImageEntry().GetType() == typeof(ImageSeqTreeSubItems))
+                {
+                    return false;
+                }
+                return true;
+            }
+            else if (ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry() != null)
+            {
+                return true;
+            } 
+            return false;
+        }
+        #endregion
+
+        #region MoveImageCommand
+        private RelayCommand<IImageGroup> _MoveImageCommand;
+        public ICommand MoveImageCommand
+        {
+            get
+            {
+                if (_MoveImageCommand == null)
+                    _MoveImageCommand = new RelayCommand<IImageGroup>(call => MoveImage_Execute(call),
+                        call => MoveImage_CanExecute());
+                return _MoveImageCommand;
+            }
+        }
+
+        // Move Selected Image to target position
+        private IImageGroup newInPlace = null;
+        private void MoveImage_Execute(IImageGroup target)
+        {
+            // Get Source Image
+            ImageProjectTreeSubItems srcImg = ImageProjectTreeVMReference.GetSelectedImageEntry();
+            if (srcImg.GetType() == typeof(ImageSeqTreeSubItems)) return;
+
+            newInPlace = null;
+            CopyImage_Execute(target);
+            if (newInPlace != null)
+            {
+                DeleteImageCommand_Execute();
+                //newInPlace.IsSelected = true;
+            }
+        }
+
+        private bool MoveImage_CanExecute()
+        {
+            var entry = ImageProjectTreeVMReference.GetSelectedImageEntry();
+            if (entry == null)
+                return false;
+            if (entry.GetType() == typeof(ImageSeqTreeSubItems))
+                return false;
+            return true;
+        }
+        #endregion
+
+        #region CopyImageCommand
+        private RelayCommand<IImageGroup> _CopyImageCommand;
+        public ICommand CopyImageCommand
+        {
+            get
+            {
+                if (_CopyImageCommand == null)
+                    _CopyImageCommand = new RelayCommand<IImageGroup>(call => CopyImage_Execute(call),
+                        call => CopyImage_CanExecute());
+                return _CopyImageCommand;
+            }
+        }
+
+        private void InsertImage(int index, ImageProjectItems group, ImageTreeSubItems src)
+        {
+            iMSImage imgcopy;
+            if (index >= group.ImageGroupRef.Count)
+            {
+                group.ImageGroupRef.Add(src.ImageRef);
+                imgcopy = group.ImageGroupRef.Last();
+            }
+            else
+            {
+                group.ImageGroupRef.Insert(index, src.ImageRef);
+                imgcopy = group.ImageGroupRef[index];
+            }
+            var newDoc = new ImageDockWindowViewModel(imgcopy) { Title = imgcopy.Name };
+            DockManagerViewModel.AddNewDocument(newDoc);
+
+            var newTreeObj = new ImageTreeSubItems(imgcopy, newDoc);
+
+            group.Items.Insert(index, newTreeObj);
+
+            // And add to the window menu
+            MenuViewModel.AddNewImageToWindowMenu(newDoc);
+
+            // Enable Cross Selection between Tree View and Document Tab
+            newDoc.PropertyChanged += ImagePropertyChangedEventHandler;
+            newTreeObj.PropertyChanged += ImageTreeEventHandler;
+
+            newInPlace = newTreeObj;
+            this.IsDirty = true;
+            ReenumerateImages();
+        }
+
+        // Copy Selected Image to target position
+        private void CopyImage_Execute(IImageGroup target)
+        {
+            // Get Source Image
+            ImageProjectTreeSubItems srcImg = ImageProjectTreeVMReference.GetSelectedImageEntry();
+            if (srcImg.GetType() == typeof(ImageSeqTreeSubItems)) return;
+
+            if (target == null)
+            {
+                // if no Target has been set, the Image was dropped somewher in the GroupBox outside the Tree hierarchy.  Add it as a free image to the end
+                Project.FreeImageContainer.Add(new iMSImage((srcImg as ImageTreeSubItems).ImageRef));
+                var imgcopy = Project.FreeImageContainer.Last();
+               
+                var newDoc = new ImageDockWindowViewModel(imgcopy) { Title = imgcopy.Name };
+                DockManagerViewModel.AddNewDocument(newDoc);
+
+                var newTreeObj = new ImageTreeSubItems(imgcopy, newDoc);
+                ImageProjectTreeVMReference.ImageProjectTable.Add(newTreeObj);
+                MenuViewModel.AddNewImageToWindowMenu(newDoc);
+
+                // Enable Cross Selection between Tree View and Document Tab
+                newDoc.PropertyChanged += ImagePropertyChangedEventHandler;
+                newTreeObj.PropertyChanged += ImageTreeEventHandler;
+
+                newInPlace = newTreeObj;
+                this.IsDirty = true;
+                return;
+            }
+            // Find location of destination and insert source
+            foreach (var item in ImageProjectTreeVMReference.ImageProjectTable)
+            {
+                if (item.GetType() == typeof(ImageProjectItems))
+                {
+                    var imgProjItem = item as ImageProjectItems;
+                    if (imgProjItem == (target as ImageProjectItems))
+                    {
+                        int index = imgProjItem.Items.Count - 1;
+                        InsertImage(index, imgProjItem, srcImg as ImageTreeSubItems);
+                        break;
+                    }
+                    foreach (ImageProjectTreeSubItems subitem in imgProjItem.Items)
+                    {
+                        //if (subitem.GetType() != typeof(ImageTreeSubItems)) continue;
+                        if (subitem == (target as ImageProjectTreeSubItems))
+                        {
+                            int index = imgProjItem.Items.IndexOf(subitem);
+                            InsertImage(index, imgProjItem, srcImg as ImageTreeSubItems);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    var imgItem = item as ImageTreeSubItems;
+                    if (imgItem == (target as ImageTreeSubItems))
+                    {
+                        int IPICount = 0;
+                        foreach (var ipitem in ImageProjectTreeVMReference.ImageProjectTable)
+                        {
+                            if (ipitem.GetType() != typeof(ImageProjectItems)) break;
+                            IPICount++;
+                        }
+                        Project.FreeImageContainer.Insert(ImageProjectTreeVMReference.ImageProjectTable.IndexOf(imgItem) - IPICount,
+                            (srcImg as ImageTreeSubItems).ImageRef);
+                        var imgcopy = Project.FreeImageContainer[ImageProjectTreeVMReference.ImageProjectTable.IndexOf(imgItem) - IPICount];
+                        var newDoc = new ImageDockWindowViewModel(imgcopy) { Title = imgcopy.Name };
+                        DockManagerViewModel.AddNewDocument(newDoc);
+
+                        var newTreeObj = new ImageTreeSubItems(imgcopy, newDoc);
+
+                        ImageProjectTreeVMReference.ImageProjectTable.Insert(
+                        ImageProjectTreeVMReference.ImageProjectTable.IndexOf(imgItem), newTreeObj);
+                        // And add to the window menu
+                        MenuViewModel.AddNewImageToWindowMenu(newDoc);
+
+                        // Enable Cross Selection between Tree View and Document Tab
+                        newDoc.PropertyChanged += ImagePropertyChangedEventHandler;
+                        newTreeObj.PropertyChanged += ImageTreeEventHandler;
+
+                        newInPlace = newTreeObj;
+                        this.IsDirty = true;
+                        ReenumerateImages();
+                        break;
+                    }
+                }
+            }
+        }
+
+        private bool CopyImage_CanExecute()
+        {
+            var entry = ImageProjectTreeVMReference.GetSelectedImageEntry();
+            if (entry == null)
+                return false;
+            if (entry.GetType() == typeof(ImageSeqTreeSubItems))
+                return false;
+            return true;
+        }
+        #endregion
+
+        #region AddNewCompensationFunctionCommand
+        private ICommand _AddNewCompensationFunctionCommand;
+        public ICommand AddNewCompensationFunctionCommand
+        {
+            get
+            {
+                if (_AddNewCompensationFunctionCommand == null)
+                    _AddNewCompensationFunctionCommand = new RelayCommand(call => AddNewCompensationFunctionCommand_Execute());
+                return _AddNewCompensationFunctionCommand;
+            }
+        }
+
+        void AddNewCompensationFunctionCommand_Execute()
+        {
+            // Create new Compensation Table in project
+            var comp = new CompensationFunction() { Name = "New Compensation Function" };
+            Project.CompensationFunctionContainer.Add(comp);
+
+            // [bug]: Adding to the CTC seems to copy by value resulting in loss of reference to the underlying object.  Recapture it.
+            comp = Project.CompensationFunctionContainer.Last();
+
+            // Add a default entry
+            comp.Add(new CompensationPointSpecification());
+
+            // Add the new document window
+            var compTable = new CompensationTableDockWindowViewModel(comp, CompensationVM.RFChannels, CompensationVM.GlobalScope,
+                    GenerateAmplitude, GeneratePhase, GenerateSyncDig, GenerateSyncAnlg) { Title = comp.Name };
+            DockManagerViewModel.AddNewDocument(compTable);
+
+            // Add the entry to the Project Tree and deselect all other items in tree
+            var newCFunc = new CompensationFunctionTreeSubItems(comp, compTable);
+            ImageProjectTreeVMReference.CompensationFunctionTable.Add(newCFunc);
+
+            // And add to the window menu
+            MenuViewModel.AddNewImageToWindowMenu(compTable);
+
+            // Crosslink properties
+            compTable.PropertyChanged += CompensationPropertyChangedEventHandler;
+            newCFunc.PropertyChanged += CompensationTreeEventHandler;
+
+            // Select new entry
+            newCFunc.IsSelected = true;
+            newCFunc.IsEditing = true;
+            this.IsDirty = true;
+
+            // Make Compensation View visible
+            foreach (var anch in DockManagerViewModel.Anchorables)
+            {
+                if (anch.GetType() == typeof(CompensationViewModel))
+                {
+                   // anch.ToggleAutoHide();
+                   // anch.CanAutoHide;
+                }
+            }
+        }
+
+        void AddExistingCompensationFunctionCommand(CompensationFunction comp)
+        {
+            // Add Compensation Table to project
+            Project.CompensationFunctionContainer.Add(comp);
+
+            // [bug]: Adding to the CTC seems to copy by value resulting in loss of reference to the underlying object.  Recapture it.
+            comp = Project.CompensationFunctionContainer.Last();
+
+            // Add the new document window
+            var compTable = new CompensationTableDockWindowViewModel(comp, CompensationVM.RFChannels, CompensationVM.GlobalScope,
+                    GenerateAmplitude, GeneratePhase, GenerateSyncDig, GenerateSyncAnlg)
+            { Title = comp.Name };
+            DockManagerViewModel.AddNewDocument(compTable);
+
+            // Add the entry to the Project Tree and deselect all other items in tree
+            var newCFunc = new CompensationFunctionTreeSubItems(comp, compTable);
+            ImageProjectTreeVMReference.CompensationFunctionTable.Add(newCFunc);
+
+            // And add to the window menu
+            MenuViewModel.AddNewImageToWindowMenu(compTable);
+
+            // Crosslink properties
+            compTable.PropertyChanged += CompensationPropertyChangedEventHandler;
+            newCFunc.PropertyChanged += CompensationTreeEventHandler;
+
+            // Select new entry
+            newCFunc.IsSelected = true;
+            newCFunc.IsEditing = false;
+            this.IsDirty = true;
+
+            // Make Compensation View visible
+            foreach (var anch in DockManagerViewModel.Anchorables)
+            {
+                if (anch.GetType() == typeof(CompensationViewModel))
+                {
+                    // anch.ToggleAutoHide();
+                    // anch.CanAutoHide;
+                }
+            }
+        }
+        #endregion
+
+        #region DeleteCompensationFunctionCommand
+        private ICommand _DeleteCompensationFunctionCommand;
+        public ICommand DeleteCompensationFunctionCommand
+        {
+            get
+            {
+                if (_DeleteCompensationFunctionCommand == null)
+                    _DeleteCompensationFunctionCommand = new RelayCommand(call => DeleteCompensationFunctionCommand_Execute(), enable => DeleteCompensationTableCommand_CanExecute());
+                return _DeleteCompensationFunctionCommand;
+            }
+        }
+
+        void DeleteCompensationFunctionCommand_Execute()
+        {
+            var item = ImageProjectTreeVMReference.GetSelectedCompensationFunctionEntry();
+            if (item != null)
+            {
+                if (MessageBoxResult.Yes != MessageBox.Show("Delete Compensation Table \"" + item.Name + "\"?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Exclamation)) return;
+                int index = ImageProjectTreeVMReference.CompensationFunctionTable.IndexOf(item);
+                ImageProjectTreeVMReference.CompensationFunctionTable.Remove(item);
+                MenuViewModel.RemoveImageFromWindowMenu(item.DocReference);
+                item.IsClosed = true;
+                // this relies on list being in same order as in the project (which it always should be)
+                Project.CompensationFunctionContainer.RemoveAt(index);
+                this.IsDirty = true;
+
+                for (int i = 0; i < (Project.CompensationFunctionContainer.Count); i++)
+                {
+                    CompensationFunction comp = Project.CompensationFunctionContainer[i];
+                    (ImageProjectTreeVMReference.CompensationFunctionTable[i] as CompensationFunctionTreeSubItems).CompensationFunctionRef = comp;
+                }
+            }
+        }
+
+        bool DeleteCompensationTableCommand_CanExecute()
+        {
+            return (ImageProjectTreeVMReference.GetSelectedCompensationFunctionEntry() != null);
+        }
+        #endregion
+
+        #region AddNewToneBufferCommand
+        private ICommand _AddNewToneBufferCommand;
+        public ICommand AddNewToneBufferCommand
+        {
+            get
+            {
+                if (_AddNewToneBufferCommand == null)
+                    _AddNewToneBufferCommand = new RelayCommand(call => AddNewToneBufferCommand_Execute());
+                return _AddNewToneBufferCommand;
+            }
+        }
+
+        void AddNewToneBufferCommand_Execute()
+        {
+            // Create new Compensation Table in project
+            var tbuf = new ToneBuffer() { Name = "New Tone Buffer" };
+            Project.ToneBufferContainer.Add(tbuf);
+
+            // [bug]: Adding to the TBC seems to copy by value resulting in loss of reference to the underlying object.  Recapture it.
+            tbuf = Project.ToneBufferContainer.Last();
+
+            // Add the new document window
+            var tbufTable = new ToneBufferDockWindowViewModel(tbuf) { Title = tbuf.Name };
+            DockManagerViewModel.AddNewDocument(tbufTable);
+
+            // Add the entry to the Project Tree and deselect all other items in tree
+            var newTBuf = new ToneBufferTreeSubItems(tbuf, tbufTable);
+            ImageProjectTreeVMReference.ToneBufferTable.Add(newTBuf);
+
+            // And add to the window menu
+            MenuViewModel.AddNewImageToWindowMenu(tbufTable);
+
+            // Crosslink properties
+            tbufTable.PropertyChanged += ToneBufferPropertyChangedEventHandler;
+            newTBuf.PropertyChanged += ToneBufferTreeEventHandler;
+
+            // Select new entry
+            newTBuf.IsSelected = true;
+            newTBuf.IsEditing = true;
+            this.IsDirty = true;
+        }
+        #endregion
+
+        #region DeleteToneBufferCommand
+        private ICommand _DeleteToneBufferCommand;
+        public ICommand DeleteToneBufferCommand
+        {
+            get
+            {
+                if (_DeleteToneBufferCommand == null)
+                    _DeleteToneBufferCommand = new RelayCommand(call => DeleteToneBufferCommand_Execute(), enable => DeleteToneBufferCommand_CanExecute());
+                return _DeleteToneBufferCommand;
+            }
+        }
+
+        void DeleteToneBufferCommand_Execute()
+        {
+            var item = ImageProjectTreeVMReference.GetSelectedToneBufferTableEntry();
+            if (item != null)
+            {
+                if (MessageBoxResult.Yes != MessageBox.Show("Delete Tone Buffer \"" + item.Name + "\"?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Exclamation)) return;
+                int index = ImageProjectTreeVMReference.ToneBufferTable.IndexOf(item);
+                ImageProjectTreeVMReference.ToneBufferTable.Remove(item);
+                MenuViewModel.RemoveImageFromWindowMenu(item.DocReference);
+                item.IsClosed = true;
+                Project.ToneBufferContainer.RemoveAt(index);
+                this.IsDirty = true;
+
+                for (int i = 0; i < (Project.ToneBufferContainer.Count); i++)
+                {
+                    ToneBuffer tbuf = Project.ToneBufferContainer[i];
+                    (ImageProjectTreeVMReference.ToneBufferTable[i] as ToneBufferTreeSubItems).ToneBufferRef = tbuf;
+                }
+            }
+        }
+
+        bool DeleteToneBufferCommand_CanExecute()
+        {
+            return (ImageProjectTreeVMReference.GetSelectedToneBufferTableEntry() != null);
+        }
+        #endregion
+
+        #region DeleteAnySelectedCommand
+        private ICommand _DeleteAnySelectedCommand;
+        public ICommand DeleteAnySelectedCommand
+        {
+            get
+            {
+                if (_DeleteAnySelectedCommand == null)
+                    _DeleteAnySelectedCommand = new RelayCommand(call => DeleteAnySelectedCommand_Execute(), enable => DeleteAnySelectedCommand_CanExecute());
+                return _DeleteAnySelectedCommand;
+            }
+        }
+
+        void DeleteAnySelectedCommand_Execute()
+        {
+            if (ImageProjectTreeVMReference.GetSelectedImageProjectTableEntry() != null
+                || ImageProjectTreeVMReference.GetSelectedImageEntry() != null)
+                DeleteImageCommand_Execute();
+            else if (ImageProjectTreeVMReference.GetSelectedCompensationFunctionEntry() != null)
+                DeleteCompensationFunctionCommand_Execute();
+            else if (ImageProjectTreeVMReference.GetSelectedToneBufferTableEntry() != null)
+                DeleteToneBufferCommand_Execute();
+        }
+
+        bool DeleteAnySelectedCommand_CanExecute()
+        {
+            return ( DeleteToneBufferCommand_CanExecute() ||
+                DeleteCompensationTableCommand_CanExecute() ||
+                DeleteImageCommand_CanExecute());
+        }
+        #endregion
+
+        #region UpdateToneCommand
+        private ICommand _LockCalibToneCommand;
+        public ICommand LockCalibToneCommand
+        {
+            get
+            {
+                if (_LockCalibToneCommand == null)
+                    _LockCalibToneCommand = new RelayCommand<bool>(param => LockCalibTone_Execute(param));
+                return _LockCalibToneCommand;
+            }
+        }
+
+        private ICommand _LockEnhancedToneCommand;
+        public ICommand LockEnhancedToneCommand
+        {
+            get
+            {
+                if (_LockEnhancedToneCommand == null)
+                    _LockEnhancedToneCommand = new RelayCommand<bool>(param => LockEnhancedTone_Execute(param));
+                return _LockEnhancedToneCommand;
+            }
+        }
+
+        private ICommand _LockDelaySliderCommand;
+        public ICommand LockDelaySliderCommand
+        {
+            get
+            {
+                if (_LockDelaySliderCommand == null)
+                    _LockDelaySliderCommand = new RelayCommand<bool>(param => LockDelaySlider_Execute(param));
+                return _LockDelaySliderCommand;
+            }
+        }
+
+        void LockCalibTone_Execute(bool value)
+        {
+            CalibrationVM.STMUnlocked = !value;
+        }
+
+        void LockEnhancedTone_Execute(bool value)
+        {
+            EnhancedToneVM.ETMUnlocked = !value;
+        }
+
+        void LockDelaySlider_Execute(bool value)
+        {
+            SignalPathVM.DelayEnable = !value;
+        }
+
+        private ICommand _GenerateAmplitude;
+        public ICommand GenerateAmplitude
+        {
+            get
+            {
+                if (_GenerateAmplitude == null)
+                    _GenerateAmplitude = new RelayCommand<CompensationTableDockWindowViewModel>(param => GenerateAmplitude_Execute(param));
+                return _GenerateAmplitude;
+            }
+        }
+
+        void GenerateAmplitude_Execute(CompensationTableDockWindowViewModel comp)
+        {
+            CompensationModifier mod = CompensationModifier.REPLACE;
+            switch(comp.Modifier)
+            {
+                case CompensationModifierVM.REPLACE: mod = CompensationModifier.REPLACE; break;
+                case CompensationModifierVM.MULTIPLY: mod = CompensationModifier.MULTIPLY; break;
+            }
+            if (CompensationVM.GlobalScope)
+            {
+                CompensationVM.ApplyGlobalFunc(comp.CompRef, CompensationFeature.AMPLITUDE, mod);
+            }
+            else
+            {
+                CompensationVM.ApplyChannelFunc(new RFChannel(comp.CurrentChannel), comp.CompRef, CompensationFeature.AMPLITUDE, mod);
+            }
+        }
+
+        private ICommand _GeneratePhase;
+        public ICommand GeneratePhase
+        {
+            get
+            {
+                if (_GeneratePhase == null)
+                    _GeneratePhase = new RelayCommand<CompensationTableDockWindowViewModel>(param => GeneratePhase_Execute(param));
+                return _GeneratePhase;
+            }
+        }
+
+        void GeneratePhase_Execute(CompensationTableDockWindowViewModel comp)
+        {
+            CompensationModifier mod = CompensationModifier.REPLACE;
+            switch (comp.Modifier)
+            {
+                case CompensationModifierVM.REPLACE: mod = CompensationModifier.REPLACE; break;
+                case CompensationModifierVM.MULTIPLY: mod = CompensationModifier.MULTIPLY; break;
+            }
+            if (CompensationVM.GlobalScope)
+            {
+                CompensationVM.ApplyGlobalFunc(comp.CompRef, CompensationFeature.PHASE, mod);
+            }
+            else
+            {
+                CompensationVM.ApplyChannelFunc(new RFChannel(comp.CurrentChannel), comp.CompRef, CompensationFeature.PHASE, mod);
+            }
+        }
+
+        private ICommand _GenerateSyncDig;
+        public ICommand GenerateSyncDig
+        {
+            get
+            {
+                if (_GenerateSyncDig == null)
+                    _GenerateSyncDig = new RelayCommand<CompensationTableDockWindowViewModel>(param => GenerateSyncDig_Execute(param));
+                return _GenerateSyncDig;
+            }
+        }
+
+        void GenerateSyncDig_Execute(CompensationTableDockWindowViewModel comp)
+        {
+            CompensationModifier mod = CompensationModifier.REPLACE;
+            switch (comp.Modifier)
+            {
+                case CompensationModifierVM.REPLACE: mod = CompensationModifier.REPLACE; break;
+                case CompensationModifierVM.MULTIPLY: mod = CompensationModifier.MULTIPLY; break;
+            }
+            if (CompensationVM.GlobalScope)
+            {
+                CompensationVM.ApplyGlobalFunc(comp.CompRef, CompensationFeature.SYNC_DIG, mod);
+            }
+            else
+            {
+                CompensationVM.ApplyChannelFunc(new RFChannel(comp.CurrentChannel), comp.CompRef, CompensationFeature.SYNC_DIG, mod);
+            }
+        }
+
+        private ICommand _GenerateSyncAnlg;
+        public ICommand GenerateSyncAnlg
+        {
+            get
+            {
+                if (_GenerateSyncAnlg == null)
+                    _GenerateSyncAnlg = new RelayCommand<CompensationTableDockWindowViewModel>(param => GenerateSyncAnlg_Execute(param));
+                return _GenerateSyncAnlg;
+            }
+        }
+
+        void GenerateSyncAnlg_Execute(CompensationTableDockWindowViewModel comp)
+        {
+            CompensationModifier mod = CompensationModifier.REPLACE;
+            switch (comp.Modifier)
+            {
+                case CompensationModifierVM.REPLACE: mod = CompensationModifier.REPLACE; break;
+                case CompensationModifierVM.MULTIPLY: mod = CompensationModifier.MULTIPLY; break;
+            }
+            if (CompensationVM.GlobalScope)
+            {
+                CompensationVM.ApplyGlobalFunc(comp.CompRef, CompensationFeature.SYNC_ANLG, mod);
+            }
+            else
+            {
+                CompensationVM.ApplyChannelFunc(new RFChannel(comp.CurrentChannel), comp.CompRef, CompensationFeature.SYNC_ANLG, mod);
+            }
+        }
+
+        #endregion
+
+    }
+}

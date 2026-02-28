@@ -1,0 +1,169 @@
+﻿<UserControl x:Class="iMS_Studio.View.ToneBufferDockWindowView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:iMS_Studio.View"
+             xmlns:vm="clr-namespace:iMS_Studio.ViewModel"
+             xmlns:diag="clr-namespace:System.Diagnostics;assembly=WindowsBase"
+             xmlns:xcdg="clr-namespace:Xceed.Wpf.DataGrid;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgv="clr-namespace:Xceed.Wpf.DataGrid.Views;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgm="clr-namespace:Xceed.Wpf.DataGrid.Markup;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xctk="clr-namespace:Xceed.Wpf.Toolkit;assembly=DotNetProjects.Wpf.Extended.Toolkit"
+             xmlns:ims="clr-namespace:iMS;assembly=iMSNET"
+             mc:Ignorable="d" 
+             d:DesignHeight="300" d:DesignWidth="300">
+    <Grid x:Name="grid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.Resources>
+            <xcdg:DataGridCollectionViewSource x:Key="tone_data" 
+                                  Source="{Binding Path=ToneData}" />
+
+            <DataTemplate x:Key="default_celltemplate">
+                <TextBlock Text="{Binding Path=., Mode=TwoWay, StringFormat={}{0:f4}}" HorizontalAlignment="Center"/>
+            </DataTemplate>
+            <DataTemplate x:Key="default_edittemplate">
+                <TextBox Text="{xcdgm:CellEditorBinding}"
+                         IsVisibleChanged="TextBox_IsVisibleChanged" Initialized="TextBox_Initialized" KeyDown="TextBox_KeyDown" />
+            </DataTemplate>
+
+            <ObjectDataProvider MethodName="GetValues"
+                ObjectType="{x:Type sys:Enum}"
+                x:Key="ControlSourceEnumValues">
+                <ObjectDataProvider.MethodParameters>
+                    <x:Type TypeName="vm:ControlSourceVM" />
+                </ObjectDataProvider.MethodParameters>
+            </ObjectDataProvider>
+
+            <Style TargetType="{x:Type xcdg:ColumnManagerCell}">
+                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="ColumnHeader_PreviewMouseButtonDown"/>
+            </Style>
+        </Grid.Resources>
+
+        <xcdg:DataGridControl x:Name="ToneEntries" ItemsSource="{Binding Source={StaticResource tone_data}}"
+                              AutoCreateColumns="False" SelectionUnit="Cell" SynchronizeSelectionWithCurrent="True"
+                              PreviewKeyDown="ToneEntries_KeyDown" PreviewKeyUp="ToneEntries_KeyUp"  UpdateSourceTrigger="CellEndingEdit"
+                              SelectionChanged="ToneEntries_SelectionChanged">
+            <xcdg:DataGridControl.Columns>
+                <xcdg:Column FieldName="FreqCh1" Title="Ch1 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh1" Title="Ch1 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh1" Title="Ch1 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="FreqCh2" Title="Ch2 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh2" Title="Ch2 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh2" Title="Ch2 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="FreqCh3" Title="Ch3 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh3" Title="Ch3 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh3" Title="Ch3 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="FreqCh4" Title="Ch4 Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="AmplCh4" Title="Ch4 Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PhaseCh4" Title="Ch4 Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+            </xcdg:DataGridControl.Columns>
+
+            <xcdg:DataGridControl.CommandBindings>
+                <CommandBinding Command="{x:Static ApplicationCommands.Paste}"/>
+            </xcdg:DataGridControl.CommandBindings>
+            <xcdg:DataGridControl.ItemScrollingBehavior>Immediate</xcdg:DataGridControl.ItemScrollingBehavior>
+
+            <xcdg:DataGridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Command="{x:Static ApplicationCommands.Copy}" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\copy.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{x:Static ApplicationCommands.Paste}" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\paste.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="In_terpolate" Command="{Binding Path=InterpolateCommand}"
+                              CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}},
+                              Path=PlacementTarget.SelectedCellRanges}" >
+                    </MenuItem>
+                </ContextMenu>
+            </xcdg:DataGridControl.ContextMenu>
+
+            <xcdg:DataGridControl.View>
+                <xcdgv:TableView UseDefaultHeadersFooters="False" ShowRowSelectorPane="True">
+                    <xcdgv:TableView.FixedHeaders>
+                        <DataTemplate>
+                            <xcdg:ColumnManagerRow AllowSort="False" AllowColumnReorder="False"/>
+                        </DataTemplate>
+                    </xcdgv:TableView.FixedHeaders>
+                </xcdgv:TableView>
+            </xcdg:DataGridControl.View>
+        </xcdg:DataGridControl>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,8,10,0">
+            <Label Content="Amplitude Compensation: " />
+            <CheckBox IsChecked="{Binding AmplCompEnabled}" VerticalAlignment="Center" IsEnabled="{Binding IsPlaying, Converter={StaticResource BooleanInvertValueConverter}}"/>
+            <Label Content="   Phase Compensation: " />
+            <CheckBox IsChecked="{Binding PhaseCompEnabled}" VerticalAlignment="Center" IsEnabled="{Binding IsPlaying, Converter={StaticResource BooleanInvertValueConverter}}"/>
+            <Label Content="   Control Source: " />
+            <ComboBox Name="ControlSourceComboBox" ItemsSource="{Binding Source={StaticResource ControlSourceEnumValues}}"
+                      SelectedItem="{Binding Path=ControlSource, Converter={StaticResource EnumDescriptionConverter}, Mode=TwoWay}" 
+                      IsSynchronizedWithCurrentItem="True"
+                      IsEnabled="{Binding IsPlaying, Converter={StaticResource BooleanInvertValueConverter}}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+    </Grid>
+</UserControl>

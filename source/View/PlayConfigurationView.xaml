@@ -1,0 +1,165 @@
+﻿<UserControl x:Class="iMS_Studio.View.PlayConfigurationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:iMS_Studio.View"
+             xmlns:xctk="clr-namespace:Xceed.Wpf.Toolkit;assembly=DotNetProjects.Wpf.Extended.Toolkit"
+             xmlns:ims="clr-namespace:iMS;assembly=iMSNET"
+             xmlns:vm="clr-namespace:iMS_Studio.ViewModel"
+             mc:Ignorable="d" 
+             d:DesignHeight="400" d:DesignWidth="200">
+    <Grid  IsEnabled="{Binding IsPlaying, Converter={StaticResource BooleanInvertValueConverter}}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="62" />
+            <RowDefinition Height="87" />
+            <RowDefinition Height="55" />
+            <RowDefinition Height="82" />
+            <RowDefinition Height="62" />
+            <RowDefinition Height="62" />
+            <RowDefinition Height="62" />
+            <RowDefinition Height="55" />
+        </Grid.RowDefinitions>
+        <GroupBox Header="Image Clock Source" Grid.Row="0" Margin="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <RadioButton GroupName="ClockSourceGroup" Grid.Column="0"
+                    IsChecked="{Binding ClockSource, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:ImagePlayer+PointClock.INTERNAL}}" Margin="10,8,0,0">
+                    Internal
+                </RadioButton>
+                <RadioButton GroupName="ClockSourceGroup" Grid.Column="1"
+                    IsChecked="{Binding ClockSource, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:ImagePlayer+PointClock.EXTERNAL}}" Margin="10,8,0,0">
+                    External
+                </RadioButton>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Image Trigger" Grid.Row="1" Margin="5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <RadioButton GroupName="TriggerTypeGroup" Grid.Row="0" Grid.Column="0"
+                    IsChecked="{Binding TriggerType, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:ImagePlayer+ImageTrigger.CONTINUOUS}}" Margin="10,8,0,0">
+                    No Trigger
+                </RadioButton>
+                <RadioButton GroupName="TriggerTypeGroup" Grid.Row="0" Grid.Column="1"
+                    IsChecked="{Binding TriggerType, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:ImagePlayer+ImageTrigger.EXTERNAL}}" Margin="10,8,0,0">
+                    External
+                </RadioButton>
+                <RadioButton GroupName="TriggerTypeGroup" Grid.Row="1" Grid.Column="0"
+                    IsChecked="{Binding TriggerType, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:ImagePlayer+ImageTrigger.HOST}}" Margin="10,8,0,0">
+                    Host
+                </RadioButton>
+                <RadioButton GroupName="TriggerTypeGroup" Grid.Row="1" Grid.Column="1"
+                    IsChecked="{Binding TriggerType, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:ImagePlayer+ImageTrigger.POST_DELAY}}" Margin="10,8,0,0">
+                    Delay
+                </RadioButton>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Image Repeats" Grid.Row="2" Margin="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox Name="ImgRpts" SelectedItem="{Binding Path=RepeatsType}" Grid.Column="0">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <xctk:IntegerUpDown Value="{Binding NumRepeats}" Minimum="1" Maximum="256" Grid.Column="1" IsEnabled="{Binding RepeatsType,
+                    Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static vm:ImageRepeatsVM.PROGRAM}}"/>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Post Image Delay" Grid.Row="3" Margin="5">
+            <StackPanel>
+                <Slider Orientation="Horizontal" Value="{Binding PostDelay}" Name="postDelaySlider"
+                        Minimum="0.0" Maximum="6553.5" TickFrequency="500.0"  IsEnabled="{Binding TriggerType,
+                                   Converter={StaticResource RadioButtonCheckedConverter}, 
+                                   ConverterParameter={x:Static ims:ImagePlayer+ImageTrigger.POST_DELAY}}"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <xctk:DoubleUpDown Value="{Binding ElementName=postDelaySlider, Path=Value, UpdateSourceTrigger=PropertyChanged}"
+                                   Minimum="0.0" Maximum="6553.5" Increment="0.1" Width="Auto" Margin="10,3,10,3" HorizontalAlignment="Stretch" Grid.Column ="0" IsEnabled="{Binding TriggerType,
+                                   Converter={StaticResource RadioButtonCheckedConverter}, 
+                                   ConverterParameter={x:Static ims:ImagePlayer+ImageTrigger.POST_DELAY}}"
+                                       FormatString="F1"/>
+                    <TextBlock Text="ms" Width="20" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                </Grid>
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="External Clock Polarity" Grid.Row="4" Margin="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <RadioButton GroupName="ClockPolarityGroup" Grid.Column="0"
+                    IsChecked="{Binding ClockPolarity, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:Polarity.NORMAL}}" Margin="3,8,0,0">
+                    Normal (L-H)
+                </RadioButton>
+                <RadioButton GroupName="ClockPolarityGroup" Grid.Column="1"
+                    IsChecked="{Binding ClockPolarity, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:Polarity.INVERSE}}" Margin="3,8,0,0">
+                    Inverse (H-L)
+                </RadioButton>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="External Trigger Polarity" Grid.Row="5" Margin="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <RadioButton GroupName="TriggerPolarityGroup" Grid.Column="0"
+                    IsChecked="{Binding TriggerPolarity, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:Polarity.NORMAL}}" Margin="3,8,0,0">
+                    Normal (L-H)
+                </RadioButton>
+                <RadioButton GroupName="TriggerPolarityGroup" Grid.Column="1"
+                    IsChecked="{Binding TriggerPolarity, Converter={StaticResource RadioButtonCheckedConverter}, 
+                    ConverterParameter={x:Static ims:Polarity.INVERSE}}" Margin="3,8,0,0">
+                    Inverse (H-L)
+                </RadioButton>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Enable Compensation" Grid.Row="6" Margin="5">
+            <StackPanel Orientation="Horizontal">
+                <CheckBox IsChecked="{Binding AmplCompEnabled}" VerticalAlignment="Center"/>
+                <Label Content="  Amplitude    " />
+                <CheckBox IsChecked="{Binding PhaseCompEnabled}" VerticalAlignment="Center"/>
+                <Label Content="  Phase" />
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="Frequency Resolution" Grid.Row="7" Margin="5">
+            <ComboBox Name="FreqRes" SelectedItem="{Binding Path=FreqResolution}" ItemsSource="{Binding Path=SupportedResolutions}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </GroupBox>
+    </Grid>
+</UserControl>

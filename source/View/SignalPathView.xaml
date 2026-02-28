@@ -1,0 +1,202 @@
+﻿<UserControl x:Class="iMS_Studio.View.SignalPathView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:approot="clr-namespace:iMS_Studio"
+             xmlns:local="clr-namespace:iMS_Studio.View"
+             xmlns:vm="clr-namespace:iMS_Studio.ViewModel"
+             xmlns:vc="clr-namespace:iMS_Studio.ValueConverters"
+             xmlns:dockctrl="clr-namespace:AvalonDock.Controls;assembly=AvalonDock"
+             xmlns:ims="clr-namespace:iMS;assembly=iMSNET"
+             xmlns:xctk="clr-namespace:Xceed.Wpf.Toolkit;assembly=DotNetProjects.Wpf.Extended.Toolkit"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="350">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <vc:BoolToStringConverter x:Key="BoolToIntExtStringConverter" TrueString="Int" FalseString="Ext"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="110" />
+            <RowDefinition Height="85" />
+        </Grid.RowDefinitions>
+
+        <GroupBox Grid.Column="0" Grid.Row="0" Header="Power Settings" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition MinHeight="150"/>
+                    <RowDefinition Height="45" />
+                    <RowDefinition Height="35" />
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Center" Margin="5">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                        <TextBox Text="{Binding ElementName=ddsPowerValue, Path=Value, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:f1}}" TextAlignment="Right" Width="35" />
+                        <TextBlock Text="%" />
+                    </StackPanel>
+                    <TextBlock Text="DDS" DockPanel.Dock="Bottom"/>
+                    <Slider Orientation="Vertical" Maximum="100" TickPlacement="BottomRight" TickFrequency="5" Name="ddsPowerValue" Value="{Binding Path=DDSPower}"/>
+                </DockPanel>
+                <DockPanel Grid.Column="1" Grid.Row="0" HorizontalAlignment="Center" Margin="5" IsEnabled="{Binding Path=Chan1Src}">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                        <TextBox Text="{Binding ElementName=wiper1PowerValue, Path=Value, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:f1}}" TextAlignment="Right" Width="35" />
+                        <TextBlock Text="%" />
+                    </StackPanel>
+                    <TextBlock Text="W1" DockPanel.Dock="Bottom" Visibility="{Binding Path=HasIndependentChannelControl, Converter={StaticResource BooleanToInvisibilityConverter}}"/>
+                    <TextBlock Text="Ch1" DockPanel.Dock="Bottom" Visibility="{Binding Path=HasIndependentChannelControl, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Slider Orientation="Vertical" Maximum="100" TickPlacement="BottomRight" TickFrequency="5" Name="wiper1PowerValue" Value="{Binding Path=Wiper1Power}" />
+                </DockPanel>
+                <DockPanel Grid.Column="2" Grid.Row="0" HorizontalAlignment="Center" Margin="5" IsEnabled="{Binding Path=Chan2Src}">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                        <TextBox IsEnabled="{Binding Path=HasChannel2}" Opacity="{Binding Path=HasChannel2, Converter={StaticResource BoolToOpacityConverter}}"
+                                 Text="{Binding ElementName=wiper2PowerValue, Path=Value, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:f1}}" TextAlignment="Right" Width="35" />
+                        <TextBlock Text="%" />
+                    </StackPanel>
+                    <TextBlock Text="W2" DockPanel.Dock="Bottom" Visibility="{Binding Path=HasIndependentChannelControl, Converter={StaticResource BooleanToInvisibilityConverter}}"/>
+                    <TextBlock Text="Ch2" DockPanel.Dock="Bottom" Visibility="{Binding Path=HasIndependentChannelControl, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Slider IsEnabled="{Binding Path=HasChannel2}"  Opacity="{Binding Path=HasChannel2, Converter={StaticResource BoolToOpacityConverter}}"
+                            Orientation="Vertical" Maximum="100" TickPlacement="BottomRight" TickFrequency="5" Name="wiper2PowerValue" Value="{Binding Path=Wiper2Power}"/>
+                </DockPanel>
+                <DockPanel Grid.Column="3" Grid.Row="0" HorizontalAlignment="Center" Margin="5" IsEnabled="{Binding Path=Chan3Src}">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                        <TextBox IsEnabled="{Binding Path=HasChannel3}" Opacity="{Binding Path=HasChannel3, Converter={StaticResource BoolToOpacityConverter}}"
+                                 Text="{Binding ElementName=wiper3PowerValue, Path=Value, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:f1}}" TextAlignment="Right" Width="35" />
+                        <TextBlock Text="%" />
+                    </StackPanel>
+                    <TextBlock Text="Ch3" DockPanel.Dock="Bottom" Visibility="{Binding Path=HasChannel3, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Slider IsEnabled="{Binding Path=HasChannel3}"  Opacity="{Binding Path=HasChannel3, Converter={StaticResource BoolToOpacityConverter}}"
+                            Orientation="Vertical" Maximum="100" TickPlacement="BottomRight" TickFrequency="5" Name="wiper3PowerValue" Value="{Binding Path=Chan3Power}" />
+                </DockPanel>
+                <DockPanel Grid.Column="4" Grid.Row="0" HorizontalAlignment="Center" Margin="5" IsEnabled="{Binding Path=Chan4Src}">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                        <TextBox IsEnabled="{Binding Path=HasChannel4}"  Opacity="{Binding Path=HasChannel4, Converter={StaticResource BoolToOpacityConverter}}"
+                                 Text="{Binding ElementName=wiper4PowerValue, Path=Value, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:f1}}" TextAlignment="Right" Width="35" />
+                        <TextBlock Text="%" />
+                    </StackPanel>
+                    <TextBlock Text="Ch4" DockPanel.Dock="Bottom" Visibility="{Binding Path=HasChannel4, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Slider IsEnabled="{Binding Path=HasChannel4}"  Opacity="{Binding Path=HasChannel4, Converter={StaticResource BoolToOpacityConverter}}"
+                            Orientation="Vertical" Maximum="100" TickPlacement="BottomRight" TickFrequency="5" Name="wiper4PowerValue" Value="{Binding Path=Chan4Power}"/>
+                </DockPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Visibility="{Binding Path=HasIndependentChannelControl, Converter={StaticResource BooleanToInvisibilityConverter}}">
+                    <TextBlock Text="Amplitude Control Source" DockPanel.Dock="Top" FontSize="11"/>
+                    <ComboBox Name="AmplSrc" SelectedItem="{Binding Path=AmplControl}"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Visibility="{Binding Path=HasIndependentChannelControl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="35" Height="15" Command="{Binding Path=Chan1SrcCmd}"
+                            Background="{Binding Path=Chan1Src, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                    <TextBlock Text="{Binding Path=Chan1Src, Converter={StaticResource BoolToIntExtStringConverter}}"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Visibility="{Binding Path=HasIndependentChannelControl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="35" Height="15" Command="{Binding Path=Chan2SrcCmd}"
+                            Background="{Binding Path=Chan2Src, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                    <TextBlock Text="{Binding Path=Chan2Src, Converter={StaticResource BoolToIntExtStringConverter}}"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="3" Visibility="{Binding Path=HasChannel3, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="35" Height="15" Command="{Binding Path=Chan3SrcCmd}"
+                            Background="{Binding Path=Chan3Src, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                    <TextBlock Text="{Binding Path=Chan3Src, Converter={StaticResource BoolToIntExtStringConverter}}"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="4" Visibility="{Binding Path=HasChannel4, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="35" Height="15" Command="{Binding Path=Chan4SrcCmd}"
+                            Background="{Binding Path=Chan4Src, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                    <TextBlock Text="{Binding Path=Chan4Src, Converter={StaticResource BoolToIntExtStringConverter}}"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+                <CheckBox Grid.Row="2" Grid.ColumnSpan="5" IsChecked="{Binding XYPairing}" Margin="5,8,0,5">
+                    Synch Phase Pairs
+                </CheckBox>
+                <StackPanel Grid.Row="3" Grid.ColumnSpan="5" Orientation="Horizontal">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Command="{Binding Path=AmpEnableCmd}"
+                            Background="{Binding Path=AmpEnable, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                    <TextBlock Text="Amplifier Enable" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Row="4" Grid.ColumnSpan="5" Orientation="Horizontal">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Command="{Binding Path=RF12EnableCmd}"
+                            Background="{Binding Path=RF12Enable, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                    <TextBlock Text="RF Channels 1+2 Enable" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Row="5" Grid.ColumnSpan="5" Orientation="Horizontal">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Command="{Binding Path=RF34EnableCmd}"
+                            Background="{Binding Path=RF34Enable, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                    <TextBlock Text="RF Channels 3+4 Enable" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Column="0" Grid.Row="1" Header="X/Y Channel Delay" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0">
+            <StackPanel Grid.Row="3">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="9*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="X:" Width="20" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0"/>
+                    <Slider Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Value="{Binding Chan12Delay}" Name="chan12DelaySlider" IsEnabled="{Binding DelayEnable}"
+                        Minimum="0.00" Maximum="40.9" TickFrequency="2.55" Margin="10,5,10,5"/>
+                    <TextBlock Text="Y:" Width="20" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0"/>
+                    <Slider Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Value="{Binding Chan34Delay}" Name="chan34DelaySlider" IsEnabled="{Binding DelayEnable}"
+                        Minimum="0.00" Maximum="40.9" TickFrequency="2.55" Margin="10,5,10,5"/>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="56*"/>
+                        <ColumnDefinition Width="37*"/>
+                        <ColumnDefinition Width="57*"/>
+                        <ColumnDefinition Width="19*"/>
+                        <ColumnDefinition Width="56*"/>
+                        <ColumnDefinition Width="94*"/>
+                        <ColumnDefinition Width="19*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="X (1+2):" Width="60" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0" Grid.ColumnSpan="2"/>
+                    <xctk:DoubleUpDown Value="{Binding ElementName=chan12DelaySlider, Path=Value, UpdateSourceTrigger=PropertyChanged}"  IsEnabled="{Binding DelayEnable}"
+                                   Minimum="0.00" Maximum="40.9" Increment="0.01"  Width="Auto" Margin="10,3,0,3" Grid.Column ="1" FormatString="F2" Grid.ColumnSpan="2"/>
+                    <TextBlock Text="μs" Width="20" Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="5,0,0,0" Grid.ColumnSpan="2"/>
+                    <TextBlock Text="Y (3+4):" Width="60" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0" Grid.ColumnSpan="2"/>
+                    <xctk:DoubleUpDown  Value="{Binding ElementName=chan34DelaySlider, Path=Value, UpdateSourceTrigger=PropertyChanged}"  IsEnabled="{Binding DelayEnable}"
+                                   Minimum="0.00" Maximum="40.9" Increment="0.01"  Width="Auto" Margin="10,3,0,3" Grid.Column ="5" FormatString="F2"/>
+                    <TextBlock Text="μs" Width="20" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="5,0,0,0"/>
+                </Grid>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Grid.Column="0" Grid.Row="2" Header="Channel Phase Control" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <Button Height="40" Margin="10,10,20,10" Command="{Binding Path=PhaseResync}">
+                        <TextBlock TextAlignment="Center" TextWrapping="Wrap">RESYNC PHASE</TextBlock>
+                    </Button>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" TextAlignment="Center" HorizontalAlignment="Right" Margin="10,0,0,0" FontSize="11">
+                        Auto Phase Clear
+                    </TextBlock>
+                </StackPanel>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Margin="10,0,0,0" Command="{Binding Path=AutoPhaseClearCmd}"
+                            Background="{Binding Path=AutoPhaseClear, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+    </Grid>
+</UserControl>

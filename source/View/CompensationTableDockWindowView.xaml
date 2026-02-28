@@ -1,0 +1,192 @@
+﻿<UserControl x:Class="iMS_Studio.View.CompensationTableDockWindowView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:iMS_Studio.View"
+             xmlns:vm="clr-namespace:iMS_Studio.ViewModel"
+             xmlns:diag="clr-namespace:System.Diagnostics;assembly=WindowsBase"
+             xmlns:xcdg="clr-namespace:Xceed.Wpf.DataGrid;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgm="clr-namespace:Xceed.Wpf.DataGrid.Markup;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xcdgv="clr-namespace:Xceed.Wpf.DataGrid.Views;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xctk="clr-namespace:Xceed.Wpf.Toolkit;assembly=DotNetProjects.Wpf.Extended.Toolkit"
+             xmlns:ims="clr-namespace:iMS;assembly=iMSNET"
+             mc:Ignorable="d" 
+             d:DesignHeight="300" d:DesignWidth="300">
+    <Grid x:Name="grid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Grid.Resources>
+            <xcdg:DataGridCollectionViewSource x:Key="comp_data" 
+                                  Source="{Binding Path=CompData}" />
+
+            <DataTemplate x:Key="SyncD_celltemplate">
+                <TextBlock Text="{Binding Path=., Mode=TwoWay, StringFormat=0x{0:X4}}" HorizontalAlignment="Center"/>
+            </DataTemplate>
+            <DataTemplate x:Key="SyncD_edittemplate">
+                <xctk:IntegerUpDown Value="{xcdgm:CellEditorBinding}" ParsingNumberStyle="HexNumber" FormatString="X4"/>
+            </DataTemplate>
+            <DataTemplate x:Key="SyncA_celltemplate">
+                <TextBlock Text="{Binding Path=., Mode=TwoWay, StringFormat={}{0:f3}}" HorizontalAlignment="Center"/>
+            </DataTemplate>
+            <DataTemplate x:Key="default_celltemplate">
+                <TextBlock Text="{Binding Path=., Mode=TwoWay, StringFormat={}{0:f4}}" HorizontalAlignment="Center"/>
+            </DataTemplate>
+            <DataTemplate x:Key="default_edittemplate">
+                <TextBox Text="{xcdgm:CellEditorBinding}"
+                         IsVisibleChanged="TextBox_IsVisibleChanged" Initialized="TextBox_Initialized" KeyDown="TextBox_KeyDown"/>
+            </DataTemplate>
+
+            <Style TargetType="{x:Type xcdg:ColumnManagerCell}">
+                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="ColumnHeader_PreviewMouseButtonDown"/>
+            </Style>
+        </Grid.Resources>
+
+        <xcdg:DataGridControl x:Name="CompEntries" Grid.Column="0" ItemsSource="{Binding Source={StaticResource comp_data}}"  
+                              AutoCreateColumns="False" SelectionUnit="Cell" SynchronizeSelectionWithCurrent="True" 
+                              PreviewKeyDown="CompEntries_KeyDown" PreviewKeyUp="CompEntries_KeyUp" UpdateSourceTrigger="CellContentChanged"
+                              SelectionChanged="CompEntries_SelectionChanged">
+            <xcdg:DataGridControl.Columns>
+                <xcdg:Column FieldName="PointFreq" Title="Compensation Frequency (MHz)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}" />
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PointAmpl" Title="Amplitude (%)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}" />
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="PointPhase" Title="Phase (deg)" CellContentTemplate="{StaticResource default_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}" />
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="SyncDig" Title="Sync Data (Dig)" CellContentTemplate="{StaticResource SyncD_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource SyncD_edittemplate}"/>
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+                <xcdg:Column FieldName="SyncAnlg" Title="Sync Data (Anlg)" CellContentTemplate="{StaticResource SyncA_celltemplate}">
+                    <xcdg:Column.CellEditor>
+                        <xcdg:CellEditor EditTemplate="{StaticResource default_edittemplate}" />
+                    </xcdg:Column.CellEditor>
+                </xcdg:Column>
+            </xcdg:DataGridControl.Columns>
+
+            <xcdg:DataGridControl.CommandBindings>
+                <CommandBinding Command="{x:Static ApplicationCommands.Paste}"/>
+            </xcdg:DataGridControl.CommandBindings>
+            <xcdg:DataGridControl.ItemScrollingBehavior>Immediate</xcdg:DataGridControl.ItemScrollingBehavior>
+
+            <xcdg:DataGridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Command="{x:Static ApplicationCommands.Copy}" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\copy.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{x:Static ApplicationCommands.Paste}" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\paste.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="In_terpolate" Command="{Binding Path=InterpolateCommand}"
+                              CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}},
+                              Path=PlacementTarget.SelectedCellRanges}" >
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="_Insert Rows" Command="{Binding Path=InsertNewRowsCommand}"
+                              CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}},
+                              Path=PlacementTarget.SelectedCellRanges}" >
+                    </MenuItem>
+                    <MenuItem Header="_Delete Rows" Command="{Binding Path=DeleteRowsCommand}"
+                              CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}},
+                              Path=PlacementTarget.SelectedCellRanges}" >
+                    </MenuItem>
+                </ContextMenu>
+            </xcdg:DataGridControl.ContextMenu>
+
+            <xcdg:DataGridControl.View>
+                <xcdgv:TableView UseDefaultHeadersFooters="False" ShowRowSelectorPane="True">
+                    <xcdgv:TableView.FixedHeaders>
+                        <DataTemplate>
+                            <xcdg:ColumnManagerRow AllowSort="False" AllowColumnReorder="False"/>
+                        </DataTemplate>
+                    </xcdgv:TableView.FixedHeaders>
+                </xcdgv:TableView>
+            </xcdg:DataGridControl.View>
+        </xcdg:DataGridControl>
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Orientation="Vertical" Margin="10,8,10,0">
+                <Label Content="# Specification Points: " />
+                <xctk:IntegerUpDown x:Name="compCount" Value="{Binding CompSize, Mode=TwoWay}" Minimum="1" Maximum="10000" />
+            </StackPanel>
+            <GroupBox Header="Interpolation Styles" Grid.Row="1">
+                <StackPanel Orientation="Vertical" Margin="5,4,5,0">
+                    <Label Content="Amplitude: " />
+                    <ComboBox Name="AmplStyleBox" SelectedItem="{Binding Path=AmplStyle}" Margin="2" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Label Content="Phase: " />
+                    <ComboBox Name="PhaseStyleBox" SelectedItem="{Binding Path=PhaseStyle}" Margin="2" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Label Content="Sync Digital: " />
+                    <ComboBox Name="SyncDStyleBox" SelectedItem="{Binding Path=SyncDStyle}" Margin="2" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Label Content="Sync Analog: " />
+                    <ComboBox Name="SyncAStyleBox" SelectedItem="{Binding Path=SyncAStyle}" Margin="2" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </GroupBox>
+            <GroupBox Header="Generate Table" Grid.Row="2">
+                <StackPanel Orientation="Vertical" Margin="5,4,5,0">
+                    <Label>Select Channel:</Label>
+                    <xctk:IntegerUpDown Name="Ch" Minimum="1" Maximum="{Binding RFChannels}" Value="{Binding CurrentChannel}" 
+                                        IsEnabled="{Binding GlobalScope, Converter={StaticResource BooleanInvertValueConverter}}" Margin="3"></xctk:IntegerUpDown>
+                    <Button Margin="3,5,3,5" Height="25" Content="Amplitude" Command="{Binding Path=GenerateAmpl}" />
+                    <Button Margin="3,5,3,5" Height="25" Content="Phase" Command="{Binding Path=GeneratePhase}" />
+                    <Button Margin="3,5,3,5" Height="25" Content="Sync Digital" Command="{Binding Path=GenerateSyncDig}" />
+                    <Button Margin="3,5,3,5" Height="25" Content="Sync Analog" Command="{Binding Path=GenerateSyncAnlg}" />
+                    <Button Margin="3,5,3,5" Height="35" Content="ALL" Command="{Binding Path=GenerateAll}" />
+                    <ComboBox Name="ModifierBox" SelectedItem="{Binding Path=Modifier}" Margin="2" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </GroupBox>
+
+        </Grid>
+    </Grid>
+</UserControl>

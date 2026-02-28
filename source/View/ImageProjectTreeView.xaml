@@ -1,0 +1,412 @@
+﻿<UserControl x:Class="iMS_Studio.View.ImageProjectTreeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:approot="clr-namespace:iMS_Studio"
+             xmlns:local="clr-namespace:iMS_Studio.View"
+             xmlns:vm="clr-namespace:iMS_Studio.ViewModel"
+             xmlns:xcdg="clr-namespace:Xceed.Wpf.DataGrid;assembly=DotNetProjects.Wpf.DataGrid"
+             xmlns:xctk="clr-namespace:Xceed.Wpf.Toolkit;assembly=DotNetProjects.Wpf.Extended.Toolkit"
+             xmlns:dock="clr-namespace:AvalonDock;assembly=AvalonDock"
+            xmlns:dockctrl="clr-namespace:AvalonDock.Controls;assembly=AvalonDock"
+            xmlns:ims="clr-namespace:iMS;assembly=iMSNET"
+             mc:Ignorable="d" 
+             d:DesignHeight="300" d:DesignWidth="300" x:Name="ProjectTree">
+    <UserControl.Resources>
+        <Style TargetType="{x:Type GridViewColumnHeader}">
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+        <Style TargetType="{x:Type ListViewItem}">
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+            <EventSetter Event="MouseDoubleClick" Handler="OnItemMouseDoubleClick" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemMouseClick" />
+            <EventSetter Event="KeyDown" Handler="OnKeyDown" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="FontWeight" Value="Bold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="cell_edit_template">
+            <StackPanel Orientation="Horizontal" >
+                <Grid>
+                    <TextBlock x:Name="ViewBox" Text="{Binding Path=Name, Mode=TwoWay}"  Visibility="{Binding IsEditing, Converter={StaticResource BooleanToInvisibilityConverter}}"/>
+                    <TextBox x:Name="EditBox" Text="{Binding Path=Name, Mode=TwoWay}"
+                             Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" 
+                             IsVisibleChanged="EditBox_IsVisibleChanged" Initialized="EditBox_Initialized" LostFocus="EditBox_LostFocus"/>
+                </Grid>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <GroupBox Grid.Column="0" Grid.Row="0" Header="Image Groups / Free Images" HorizontalAlignment="Stretch" 
+                  VerticalAlignment="Stretch" Margin="0" MouseUp="GroupBox_MouseUp" Drop="GroupBox_Drop"
+                  Tag="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}, Path=DataContext}">
+
+            <GroupBox.ContextMenu>
+                <ContextMenu DataContext="{Binding Path=PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                    <ContextMenu.Style>
+                        <Style TargetType="ContextMenu">
+                            <EventSetter Event="Opened" Handler="ContextMenu_Opened"/>
+                        </Style>
+                    </ContextMenu.Style>
+                    <MenuItem Header="Add Image Group" Command="{Binding Path=AddNewImageGroupCommand}">
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\file_yellow_hierarchy1_expanded_add.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Add Image" Command="{Binding Path=AddNewImageCommand}">
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\plus_green.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Delete Image / Image Group" Command="{Binding Path=DeleteImageCommand}" IsEnabled="False" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\minus_red.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="Close" IsEnabled="False" />
+                    <Separator/>
+                    <MenuItem Header="Cut" IsEnabled="False">
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\scissors.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Copy" IsEnabled="False">
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\copy.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Paste" IsEnabled="{Binding Path=ProjectExplorerVM.PasteBufferOccupied}">
+                        <MenuItem.Style>
+                            <Style TargetType="MenuItem">
+                                <EventSetter Event="Click" Handler="MenuItemPaste_Click"/>
+                            </Style>
+                        </MenuItem.Style>
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\paste.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </GroupBox.ContextMenu>
+            <TreeView Name="trvImgProj" BorderThickness="0" ItemsSource="{Binding ImageProjectTable}" AllowDrop="True">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="{x:Type TreeViewItem}">
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="IsExpanded" Value="True"/>
+                        <Setter Property="Tag" Value="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}, Path=DataContext}"></Setter>
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu DataContext="{Binding Path=PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                    <ContextMenu.Style>
+                                        <Style TargetType="ContextMenu">
+                                            <EventSetter Event="Opened" Handler="ContextMenu_Opened"/>
+                                        </Style>
+                                    </ContextMenu.Style>
+                                    <MenuItem Header="Add Image Group" Command="{Binding Path=AddNewImageGroupCommand}">
+                                        <MenuItem.Icon>
+                                            <Image Source="..\..\resources\Images\file_yellow_hierarchy1_expanded_add.png" Height="16" Width="16"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Add Image" Command="{Binding Path=AddNewImageCommand}">
+                                        <MenuItem.Icon>
+                                            <Image Source="..\..\resources\Images\plus_green.png" Height="16" Width="16"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Delete Image / Image Group" Command="{Binding Path=DeleteImageCommand}" >
+                                        <MenuItem.Icon>
+                                            <Image Source="..\..\resources\Images\minus_red.png" Height="16" Width="16"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="Close">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <EventSetter Event="Click" Handler="MenuItemClose_Click"/>
+                                            </Style>
+                                        </MenuItem.Style>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="Cut">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <EventSetter Event="Click" Handler="MenuItemCut_Click"/>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <Image Source="..\..\resources\Images\scissors.png" Height="16" Width="16"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Copy">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <EventSetter Event="Click" Handler="MenuItemCopy_Click"/>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <Image Source="..\..\resources\Images\copy.png" Height="16" Width="16"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Paste">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <Setter Property="IsEnabled" Value="{Binding Path=ProjectExplorerVM.PasteBufferOccupied}" />
+                                                <EventSetter Event="Click" Handler="MenuItemPaste_Click"/>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <Image Source="..\..\resources\Images\paste.png" Height="16" Width="16"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+
+                            </Setter.Value>
+                        </Setter>
+                        <EventSetter Event="MouseDoubleClick" Handler="OnItemMouseDoubleClick" />
+                        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemMouseClick" />
+                        <EventSetter Event="KeyDown" Handler="OnKeyDown" />
+                        <EventSetter Event="MouseMove" Handler="OnMouseMove" />
+                        <EventSetter Event="Drop" Handler="OnDrop" />
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+
+                <TreeView.CommandBindings>
+                    <CommandBinding Command="{x:Static ApplicationCommands.Cut}" Executed="MenuItemCut_Click" CanExecute="MenuItemCut_CanExecute"/>
+                    <CommandBinding Command="{x:Static ApplicationCommands.Copy}" Executed="MenuItemCopy_Click" CanExecute="MenuItemCopy_CanExecute"/>
+                    <CommandBinding Command="{x:Static ApplicationCommands.Paste}" Executed="MenuItemPaste_Click" CanExecute="MenuItemPaste_CanExecute"/>
+                </TreeView.CommandBindings>
+                
+                <TreeView.Resources>
+                    <HierarchicalDataTemplate DataType="{x:Type vm:ImageProjectItems}" ItemsSource="{Binding Items}" x:Name="imgProjTemplate">
+                        <StackPanel Orientation="Horizontal">
+                            <Grid>
+                                <TextBlock Text="{Binding Path=Name, Mode=TwoWay}" 
+                                           Visibility="{Binding IsEditing, Converter={StaticResource BooleanToInvisibilityConverter}}"
+                                           TextDecorations="{Binding IsMarkedForCut, Converter={StaticResource BooleanToStrikethroughConverter}}"/>
+                                <TextBox x:Name="EditBox" Text="{Binding Path=Name, Mode=TwoWay}" 
+                                         Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                         IsVisibleChanged="EditBox_IsVisibleChanged" Initialized="EditBox_Initialized" LostFocus="EditBox_LostFocus"/>
+                            </Grid>
+                            <TextBlock Text=" [" Foreground="Blue" />
+                            <TextBlock Text="{Binding Items.Count}" Foreground="Green" />
+                            <TextBlock Text="] " Foreground="Blue" />
+                        </StackPanel>
+                    </HierarchicalDataTemplate>
+                    <DataTemplate DataType="{x:Type vm:ImageProjectTreeSubItems}" x:Name="imgTemplate">
+                        <StackPanel Orientation="Horizontal" >
+                            <Grid>
+                                <TextBlock Text="{Binding Path=Name, Mode=TwoWay}"
+                                           Visibility="{Binding IsEditing, Converter={StaticResource BooleanToInvisibilityConverter}}"
+                                           TextDecorations="{Binding IsMarkedForCut, Converter={StaticResource BooleanToStrikethroughConverter}}"/>
+                                <TextBox x:Name="EditBox" Text="{Binding Path=Name, Mode=TwoWay}" 
+                                         Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                         IsVisibleChanged="EditBox_IsVisibleChanged" Initialized="EditBox_Initialized" LostFocus="EditBox_LostFocus"/>
+                            </Grid>
+                            <TextBlock Text=" (" Foreground="Green" />
+                            <TextBlock Text="{Binding Entries}" Foreground="Green" />
+                            <TextBlock Text=" entries)" Foreground="Green" />
+                        </StackPanel>
+                    </DataTemplate>
+                </TreeView.Resources>
+            </TreeView>
+
+            <GroupBox.CommandBindings>
+                <CommandBinding Command="{x:Static ApplicationCommands.Cut}" Executed="MenuItemCut_Click" CanExecute="MenuItemCut_CanExecute"/>
+                <CommandBinding Command="{x:Static ApplicationCommands.Copy}" Executed="MenuItemCopy_Click" CanExecute="MenuItemCopy_CanExecute"/>
+                <CommandBinding Command="{x:Static ApplicationCommands.Paste}" Executed="MenuItemPaste_Click" CanExecute="MenuItemPaste_CanExecute"/>
+            </GroupBox.CommandBindings>
+
+        </GroupBox>
+
+        <ToolBarTray Grid.Column="1" Grid.Row="0" Orientation="Vertical">
+            <ToolBar>
+                <Button Command="{Binding Path=DataContext.AddNewImageGroupCommand, 
+                    RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}}" ToolTip="Create New Image Group" Height="20">
+                    <Image Source="..\..\resources\Images\file_yellow_hierarchy1_expanded_add.png" />
+                </Button>
+                <Button Command="{Binding Path=DataContext.AddNewImageCommand, 
+                    RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}}" ToolTip="Create New Image" Height="20">
+                    <Image Source="..\..\resources\Images\plus_green.png" />
+                </Button>
+                <Button Command="{Binding Path=DataContext.DeleteImageCommand, 
+                    RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}}" ToolTip="Delete Image / Image Group" Height="20">
+                    <Image Source="..\..\resources\Images\minus_red.png" />
+                </Button>
+            </ToolBar>
+        </ToolBarTray>
+        
+        <GridSplitter Grid.Column="0" Grid.Row="1" Width="Auto" Height="5" Grid.ColumnSpan="2"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="0" BorderBrush="LightGray" BorderThickness="2"/>
+
+        <GroupBox Grid.Column="0" Grid.Row="2" Header="Compensation Functions" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0"
+                  Tag="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}, Path=DataContext}">
+            <GroupBox.ContextMenu>
+                <ContextMenu DataContext="{Binding Path=PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                    <ContextMenu.Style>
+                        <Style TargetType="ContextMenu">
+                            <EventSetter Event="Opened" Handler="ContextMenu_Opened"/>
+                        </Style>
+                    </ContextMenu.Style>
+                    <MenuItem Header="Add Compensation Function" Command="{Binding Path=AddNewCompensationFunctionCommand}">
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\plus_green.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Delete Compensation Function" Command="{Binding Path=DeleteCompensationFunctionCommand}" IsEnabled="False" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\minus_red.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="Close" IsEnabled="False" />
+                </ContextMenu>
+            </GroupBox.ContextMenu>
+            <ListView Name="lvCompTable" ItemsSource="{Binding CompensationFunctionTable}"
+                      Tag="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}, Path=DataContext}" >
+                <ListView.ContextMenu>
+                    <ContextMenu DataContext="{Binding Path=PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                        <ContextMenu.Style>
+                            <Style TargetType="ContextMenu">
+                                <EventSetter Event="Opened" Handler="ContextMenu_Opened"/>
+                            </Style>
+                        </ContextMenu.Style>
+                        <MenuItem Header="Add Compensation Function" Command="{Binding Path=AddNewCompensationFunctionCommand}">
+                                <MenuItem.Icon>
+                                    <Image Source="..\..\resources\Images\plus_green.png" Height="16" Width="16"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        <MenuItem Header="Delete Compensation Function" Command="{Binding Path=DeleteCompensationFunctionCommand}" >
+                                <MenuItem.Icon>
+                                    <Image Source="..\..\resources\Images\minus_red.png" Height="16" Width="16"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator/>
+                        <MenuItem Header="Close">
+                            <MenuItem.Style>
+                                <Style TargetType="MenuItem">
+                                    <EventSetter Event="Click" Handler="MenuItemClose_Click"/>
+                                </Style>
+                            </MenuItem.Style>
+                        </MenuItem>
+                    </ContextMenu>
+                </ListView.ContextMenu>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Name" CellTemplate="{StaticResource cell_edit_template}" />
+                        <GridViewColumn Header="Entries" DisplayMemberBinding="{Binding Entries}" />
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </GroupBox>
+
+        <ToolBarTray Grid.Column="1" Grid.Row="2" Orientation="Vertical">
+            <ToolBar>
+                <Button Command="{Binding Path=DataContext.AddNewCompensationFunctionCommand, 
+                    RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}}" ToolTip="Create New Compensation Function" Height="20">
+                    <Image Source="..\..\resources\Images\plus_green.png" />
+                </Button>
+                <Button Command="{Binding Path=DataContext.DeleteCompensationFunctionCommand, 
+                    RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}}" ToolTip="Remove Selected Compensation Function" Height="20">
+                    <Image Source="..\..\resources\Images\minus_red.png" />
+                </Button>
+            </ToolBar>
+        </ToolBarTray>
+
+
+        <GridSplitter Grid.Column="0" Grid.Row="3" Width="Auto" Height="5" Grid.ColumnSpan="2"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="0" BorderBrush="LightGray" BorderThickness="2"/>
+
+        <GroupBox Grid.Column="0" Grid.Row="4" Header="Tone Buffers" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0"
+                  Tag="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}, Path=DataContext}" >
+            <GroupBox.ContextMenu>
+                <ContextMenu DataContext="{Binding Path=PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                    <ContextMenu.Style>
+                        <Style TargetType="ContextMenu">
+                            <EventSetter Event="Opened" Handler="ContextMenu_Opened"/>
+                        </Style>
+                    </ContextMenu.Style>
+                    <MenuItem Header="Add Tone Buffer" Command="{Binding Path=AddNewToneBufferCommand}">
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\plus_green.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Delete Tone Buffer" Command="{Binding Path=DeleteToneBufferCommand}" IsEnabled="False" >
+                        <MenuItem.Icon>
+                            <Image Source="..\..\resources\Images\minus_red.png" Height="16" Width="16"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="Close" IsEnabled="False" />
+                </ContextMenu>
+            </GroupBox.ContextMenu>
+            <ListView Name="lvTbufTable" ItemsSource="{Binding ToneBufferTable}" 
+                      Tag="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}, Path=DataContext}" >
+                <ListView.ContextMenu>
+                    <ContextMenu DataContext="{Binding Path=PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                        <ContextMenu.Style>
+                            <Style TargetType="ContextMenu">
+                                <EventSetter Event="Opened" Handler="ContextMenu_Opened"/>
+                            </Style>
+                        </ContextMenu.Style>
+                        <MenuItem Header="Add Tone Buffer" Command="{Binding Path=AddNewToneBufferCommand}">
+                            <MenuItem.Icon>
+                                <Image Source="..\..\resources\Images\plus_green.png" Height="16" Width="16"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Delete Tone Buffer" Command="{Binding Path=DeleteToneBufferCommand}" >
+                            <MenuItem.Icon>
+                                <Image Source="..\..\resources\Images\minus_red.png" Height="16" Width="16"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="Close">
+                            <MenuItem.Style>
+                                <Style TargetType="MenuItem">
+                                    <EventSetter Event="Click" Handler="MenuItemClose_Click"/>
+                                </Style>
+                            </MenuItem.Style>
+                        </MenuItem>
+                    </ContextMenu>
+                </ListView.ContextMenu>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Name" CellTemplate="{StaticResource cell_edit_template}" />
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </GroupBox>
+
+        <ToolBarTray Grid.Column="1" Grid.Row="4" Orientation="Vertical">
+            <ToolBar>
+                <Button Command="{Binding Path=DataContext.AddNewToneBufferCommand, 
+                    RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}}" ToolTip="Create New Tone Buffer" Height="20">
+                    <Image Source="..\..\resources\Images\plus_green.png" />
+                </Button>
+                <Button Command="{Binding Path=DataContext.DeleteToneBufferCommand, 
+                    RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type approot:MainWindow}}}" ToolTip="Remove Selected Tone Buffer" Height="20">
+                    <Image Source="..\..\resources\Images\minus_red.png" />
+                </Button>
+            </ToolBar>
+        </ToolBarTray>
+
+    </Grid>
+</UserControl>
