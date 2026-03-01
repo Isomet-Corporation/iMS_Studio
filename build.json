@@ -1,0 +1,17 @@
+{
+  "Name": "iMS_Studio",
+  "DependsOn": ["imslib-csharp", "ims_hw_server"],
+  "OutputDir": "dist",
+  "Tasks": [
+    {
+      "Name": "Restore",
+      "Script": "dotnet.exe",
+      "Args": ["restore"]
+    },
+    {
+      "Name": "Release AnyCPU",
+      "Script": "build.ps1",
+      "Args": []
+    }
+  ]
+}
