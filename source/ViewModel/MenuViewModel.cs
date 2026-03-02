@@ -207,7 +207,7 @@ namespace iMS_Studio.ViewModel
             };
             var img = new BitmapImage();
             img.BeginInit();
-            img.UriSource = new Uri("pack://application:,,,/Images\\Isomet icon 128 128.ico");
+            img.UriSource = new Uri("pack://application:,,,/resources\\Images\\Isomet icon 128 128.ico");
             img.EndInit();
             vm.ApplicationLogo = img;
             vm.PublisherLogo = img;
@@ -294,7 +294,7 @@ namespace iMS_Studio.ViewModel
                             {
                                 Process proc = new Process();
                                 proc.StartInfo.FileName = DefaultWebBrowser;
-                                proc.StartInfo.Arguments = "\"" + InstallPath + "\\doc\\html\\index.html" + "\"";
+                                proc.StartInfo.Arguments = "https://isomet-corporation.github.io/ims-lib/";
                                 proc.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
 
                                 proc.Start();

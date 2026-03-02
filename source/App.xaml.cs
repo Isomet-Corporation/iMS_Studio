@@ -257,7 +257,10 @@ namespace iMS_Studio
             }
 
             // Close channel to H/W Server
-            channel.ShutdownAsync().Wait();
+            if (channel != null)
+            {
+                channel.ShutdownAsync().Wait();
+            }
 
             if (HWServerApp != null)
             {
