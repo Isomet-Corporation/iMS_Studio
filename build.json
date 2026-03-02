@@ -1,7 +1,9 @@
 {
   "Name": "iMS_Studio",
   "DependsOn": ["imslib-csharp", "ims_hw_server"],
-  "OutputDir": "dist",
+  "OutputDir": "bin/Release",
+  "ExportDir": "util/iMS_Studio",
+  "SignFiles": ["Isomet iMS Studio.exe", "iMSNET.dll"],
   "Tasks": [
     {
       "Name": "Restore",
