@@ -22,6 +22,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="110" />
+            <RowDefinition Height="110" />
             <RowDefinition Height="85" />
         </Grid.RowDefinitions>
 
@@ -38,8 +39,6 @@
                     <RowDefinition MinHeight="150"/>
                     <RowDefinition Height="45" />
                     <RowDefinition Height="35" />
-                    <RowDefinition Height="30" />
-                    <RowDefinition Height="30" />
                     <RowDefinition Height="30" />
                 </Grid.RowDefinitions>
                 <DockPanel Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Center" Margin="5">
@@ -114,23 +113,23 @@
                             Background="{Binding Path=Chan4Src, Converter={StaticResource RedGrnGradBrushConverter}}" />
                     <TextBlock Text="{Binding Path=Chan4Src, Converter={StaticResource BoolToIntExtStringConverter}}"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
                 </StackPanel>
-                <CheckBox Grid.Row="2" Grid.ColumnSpan="5" IsChecked="{Binding XYPairing}" Margin="5,8,0,5">
-                    Synch Phase Pairs
+                <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" IsChecked="{Binding XYPairing}" Margin="5,8,0,5">
+                    Gang Pairs
                 </CheckBox>
-                <StackPanel Grid.Row="3" Grid.ColumnSpan="5" Orientation="Horizontal">
+                <StackPanel Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="2" Orientation="Horizontal">
                     <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Command="{Binding Path=AmpEnableCmd}"
                             Background="{Binding Path=AmpEnable, Converter={StaticResource RedGrnGradBrushConverter}}" />
-                    <TextBlock Text="Amplifier Enable" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                    <TextBlock Text="Amp En" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
                 </StackPanel>
-                <StackPanel Grid.Row="4" Grid.ColumnSpan="5" Orientation="Horizontal">
+                <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal">
                     <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Command="{Binding Path=RF12EnableCmd}"
                             Background="{Binding Path=RF12Enable, Converter={StaticResource RedGrnGradBrushConverter}}" />
-                    <TextBlock Text="RF Channels 1+2 Enable" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                    <TextBlock Text="RF 1+2 En" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
                 </StackPanel>
-                <StackPanel Grid.Row="5" Grid.ColumnSpan="5" Orientation="Horizontal">
+                <StackPanel Grid.Row="3" Grid.Column="3" Grid.ColumnSpan="2" Orientation="Horizontal">
                     <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Command="{Binding Path=RF34EnableCmd}"
                             Background="{Binding Path=RF34Enable, Converter={StaticResource RedGrnGradBrushConverter}}" />
-                    <TextBlock Text="RF Channels 3+4 Enable" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                    <TextBlock Text="RF 3+4 En" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
                 </StackPanel>
             </Grid>
         </GroupBox>
@@ -175,7 +174,50 @@
             </StackPanel>
         </GroupBox>
 
-        <GroupBox Grid.Column="0" Grid.Row="2" Header="Channel Phase Control" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0">
+        <GroupBox Grid.Column="0" Grid.Row="2" Header="RF Duty Cycle" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0">
+            <StackPanel>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="9*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Dly:" Width="30" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0"/>
+                    <Slider Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Value="{Binding RFDutyCycleDelay}" Name="rfDutyCycleDelaySlider"
+                            Minimum="0.05" Maximum="10.00" TickFrequency="0.50" Margin="10,5,10,5"/>
+                    <TextBlock Text="Wid:" Width="30" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0"/>
+                    <Slider Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Value="{Binding RFDutyCycleWidth}" Name="rfDutyCycleWidthSlider"
+                            Minimum="0.05" Maximum="30.00" TickFrequency="1.50" Margin="10,5,10,5"/>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="45"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="45"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="30"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Delay:" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="5,0,0,0"/>
+                    <xctk:DoubleUpDown Value="{Binding ElementName=rfDutyCycleDelaySlider, Path=Value, UpdateSourceTrigger=PropertyChanged}"
+                                       Minimum="0.05" Maximum="10.00" Increment="0.01" Width="Auto" Margin="3,3,0,3" Grid.Column="1" FormatString="F2"/>
+                    <TextBlock Text="μs" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="2,0,0,0"/>
+                    <TextBlock Text="Width:" Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="5,0,0,0"/>
+                    <xctk:DoubleUpDown Value="{Binding ElementName=rfDutyCycleWidthSlider, Path=Value, UpdateSourceTrigger=PropertyChanged}"
+                                       Minimum="0.05" Maximum="30.00" Increment="0.01" Width="Auto" Margin="3,3,0,3" Grid.Column="4" FormatString="F2"/>
+                    <TextBlock Text="μs" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="2,0,0,0"/>
+                    <Button Style="{StaticResource ButtonWithNoHover}" Width="20" Height="20" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Command="{Binding Path=RFDutyCycleEnableCmd}"
+                            Background="{Binding Path=RFDutyCycleEnable, Converter={StaticResource RedGrnGradBrushConverter}}" />
+                </Grid>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Grid.Column="0" Grid.Row="3" Header="Channel Phase Control" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*" />

@@ -259,6 +259,53 @@ namespace iMS_Studio.ViewModel
         #endregion
 
 
+        #region RFDutyCycle
+        private bool _dutyCycleEn;
+        public bool RFDutyCycleEnable
+        {
+            get { return _dutyCycleEn; }
+            set
+            {
+                if (value != _dutyCycleEn)
+                {
+                    _dutyCycleEn = value;
+                    theModel.RFDutyCycleEnable = value;
+                    OnPropertyChanged("RFDutyCycleEnable");
+                }
+            }
+        }
+
+        private double _dutyCycleDelay;
+        public double RFDutyCycleDelay
+        {
+            get { return _dutyCycleDelay; }
+            set
+            {
+                if (value != _dutyCycleDelay)
+                {
+                    _dutyCycleDelay = value;
+                    theModel.RFDutyCycleDelay = value;
+                    OnPropertyChanged("RFDutyCycleDelay");
+                }
+            }
+        }
+
+        private double _dutyCycleWidth;
+        public double RFDutyCycleWidth
+        {
+            get { return _dutyCycleWidth; }
+            set
+            {
+                if (value != _dutyCycleWidth)
+                {
+                    _dutyCycleWidth = value;
+                    theModel.RFDutyCycleWidth = value;
+                    OnPropertyChanged("RFDutyCycleWidth");
+                }
+            }
+        }
+        #endregion
+
         private PowerSettings.Types.AmplitudeControl _AmplControl;
         public PowerSettings.Types.AmplitudeControl AmplControl
         {
@@ -344,6 +391,19 @@ namespace iMS_Studio.ViewModel
                     _RF34EnableCmd = new RelayCommand(param => RF34Enable = !RF34Enable);
                 }
                 return _RF34EnableCmd;
+            }
+        }
+
+        private ICommand _rfDutyCycleEnableCmd;
+        public ICommand RFDutyCycleEnableCmd
+        {
+            get
+            {
+                if (_rfDutyCycleEnableCmd == null)
+                {
+                    _rfDutyCycleEnableCmd = new RelayCommand(param => RFDutyCycleEnable = !RFDutyCycleEnable);
+                }
+                return _rfDutyCycleEnableCmd;
             }
         }
 

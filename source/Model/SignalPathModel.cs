@@ -19,11 +19,12 @@ namespace iMS_Studio.Model
         private ChannelPowerSettings[] _chanSettings;
         private SyncDelay _syncdelay;
         private ChanDelay _chandelay;
+        private RFDutyCycle _dutycycle;
         private MasterSwitch _mastersw;
         private SyncMapping[] _syncmap;
         private bool _autoPhaseResync;
 
-        private bool _isSyncDelayDirty, _isPowerSettingsDirty, _isChanDelayDirty;
+        private bool _isSyncDelayDirty, _isPowerSettingsDirty, _isChanDelayDirty, _isDutyCycleDirty;
         private bool[] _isChannelSettingsDirty;
         private Timer _timer;
 
@@ -34,6 +35,7 @@ namespace iMS_Studio.Model
             _isSyncDelayDirty = false;
             _isPowerSettingsDirty = false;
             _isChanDelayDirty = false;
+            _isDutyCycleDirty = false;
             _isChannelSettingsDirty = new bool[] { true, true, true, true };
             _autoPhaseResync = false;
 
@@ -71,6 +73,13 @@ namespace iMS_Studio.Model
             {
                 Delay12 = 0,
                 Delay34 = 0
+            };
+
+            _dutycycle = new RFDutyCycle
+            {
+                Enable = false,
+                Delay = 0,
+                Width = 0
             };
 
             _mastersw = new MasterSwitch
@@ -130,12 +139,13 @@ namespace iMS_Studio.Model
 
         private void OnTimer(object state)
         {
-            if (_isSyncDelayDirty || _isPowerSettingsDirty || _isChanDelayDirty)
+            if (_isSyncDelayDirty || _isPowerSettingsDirty || _isChanDelayDirty || _isDutyCycleDirty)
             {
-                updateHW(_isPowerSettingsDirty, _isSyncDelayDirty, _isChanDelayDirty);
+                updateHW(_isPowerSettingsDirty, _isSyncDelayDirty, _isChanDelayDirty, _isDutyCycleDirty);
                 _isSyncDelayDirty = false;
                 _isPowerSettingsDirty = false;
                 _isChanDelayDirty = false;
+                _isDutyCycleDirty = false;
             }
             for (int i=1; i<=4; i++)
             {
@@ -147,7 +157,7 @@ namespace iMS_Studio.Model
             }
         }
 
-        private void updateHW(bool updatePower, bool updateDelay, bool updateChanDelay)
+        private void updateHW(bool updatePower, bool updateDelay, bool updateChanDelay, bool updateDutyCycle)
         {
             if (thisIMS != null)
             {
@@ -155,6 +165,7 @@ namespace iMS_Studio.Model
                 if (updatePower) client.dds_power(_settings);
                 if (updateDelay) client.set_sync_delay(_syncdelay);
                 if (updateChanDelay) client.set_chan_delay(_chandelay);
+                if (updateDutyCycle) client.set_rf_duty_cycle(_dutycycle);
             }
         }
 
@@ -297,6 +308,36 @@ namespace iMS_Studio.Model
             {
                 _chandelay.Delay34 = (uint)(value * 100 + 0.5) * 10;
                 _isChanDelayDirty = true;
+            }
+        }
+
+        public bool RFDutyCycleEnable
+        {
+            get { return _dutycycle.Enable; }
+            set
+            {
+                _dutycycle.Enable = value;
+                _isDutyCycleDirty = true;
+            }
+        }
+
+        public double RFDutyCycleDelay
+        {
+            get { return _dutycycle.Delay; }
+            set
+            {
+                _dutycycle.Delay = (uint)(value * 100 + 0.5) * 10;
+                _isDutyCycleDirty = true;
+            }
+        }
+
+        public double RFDutyCycleWidth
+        {
+            get { return _dutycycle.Width; }
+            set
+            {
+                _dutycycle.Width = (uint)(value * 100 + 0.5) * 10;
+                _isDutyCycleDirty = true;
             }
         }
 
